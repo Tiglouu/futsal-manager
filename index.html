@@ -1137,7 +1137,7 @@ async function renderCalendar(){
     supa.from("matches").select("*").eq("championship_id",myChampId).or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`),
     supa.from("competition_matches").select("*").or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`)
   ]);
-  const lg=lgR.data||[], cmp=(cmpR.data||[]).filter(m=>m.stage==='group'||m.stage==='ko');
+  const lg=lgR.data||[], cmp=(cmpR.data||[]).filter(m=>m.stage==='group'||m.stage==='ko'||m.stage==='qualif');
   const tids=new Set(); [...lg,...cmp].forEach(m=>{ tids.add(m.home_team_id); tids.add(m.away_team_id); });
   const tmap={}; if(tids.size){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",[...tids]); (tt||[]).forEach(t=>tmap[t.id]=t); }
   // force (moyenne du top 5) pour la difficulté
@@ -1233,18 +1233,56 @@ async function renderAgenda(){
   const now=new Date();
   const addDays=(d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
   const fmt=d=>d.toLocaleDateString("fr-FR",{day:'2-digit',month:'short'});
+  const fmtDT=d=>d.toLocaleString("fr-FR",{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+
+  // --- Tes prochaines échéances (toutes compétitions) ---
+  let mineHtml='';
+  if(myTeam){
+    const events=[];
+    const { data:um } = await supa.from("matches").select("*").or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).eq("played",false);
+    (um||[]).filter(m=>m.scheduled_at).forEach(m=>{ const home=m.home_team_id===myTeam.id;
+      events.push({when:new Date(m.scheduled_at), oppId:home?m.away_team_id:m.home_team_id, home, label:'Championnat', kind:'club'}); });
+    const { data:cm } = await supa.from("competition_matches").select("*").or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).eq("played",false);
+    (cm||[]).filter(m=>m.scheduled_at).forEach(m=>{ const home=m.home_team_id===myTeam.id;
+      events.push({when:new Date(m.scheduled_at), oppId:home?m.away_team_id:m.home_team_id, home, label:m.round_label||'Coupe', kind:'club'}); });
+    const oids=[...new Set(events.map(e=>e.oppId).filter(Boolean))];
+    const tmapA={}; if(oids.length){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",oids); (tt||[]).forEach(t=>tmapA[t.id]=t); }
+    try{
+      const { data:sel } = await supa.from("national_selections").select("country_code").eq("coach_user_id", myUserId);
+      for(const s of (sel||[])){
+        const { data:nm } = await supa.from("national_matches").select("*").or(`home_country.eq.${s.country_code},away_country.eq.${s.country_code}`).eq("played",false);
+        (nm||[]).filter(m=>m.scheduled_at).forEach(m=>{ const home=m.home_country===s.country_code;
+          events.push({when:new Date(m.scheduled_at), oppName:countryName(home?m.away_country:m.home_country), oppFlag:(home?m.away_country:m.home_country), home, label:'Sélection '+countryName(s.country_code), kind:'nat'}); });
+      }
+    }catch(e){}
+    events.sort((a,b)=>a.when-b.when);
+    const up=events.slice(0,6);
+    const isToday=d=>d.toDateString()===now.toDateString();
+    if(up.length){
+      mineHtml=`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">Tes prochains matchs</h3>`+
+        up.map(e=>{ const name = e.kind==='nat' ? `${flag(e.oppFlag,14)} ${esc(e.oppName)}` : `${flag(tmapA[e.oppId]?.country_code,14)} ${esc(tmapA[e.oppId]?.name||'?')}`;
+          return `<div class="agenda-row"><div><div class="ag-name">${name}</div>
+            <div class="ag-detail">${e.home?'à domicile':'à l\'extérieur'} · ${esc(e.label)}</div></div>
+            <div style="text-align:right"><div class="ag-date">${fmtDT(e.when)}${isToday(e.when)?' <span style="color:var(--orange)">• aujourd\'hui</span>':''}</div></div></div>`;
+        }).join('')+`</div>`;
+    }
+  }
+
+  // --- Programme de la saison (corrigé) ---
   const items=[];
-  items.push({name:"Championnats nationaux", detail:"Toutes les ligues · 4 journées", s:addDays(base,0), e:addDays(base,3)});
-  items.push({name:"Coupes nationales", detail:"Élimination directe par pays", s:addDays(base,4), e:addDays(base,4)});
-  ZONES.forEach(z=>items.push({name:"Ligue des champions — "+z, detail:"Meilleures équipes de la zone", s:addDays(base,5), e:addDays(base,5)}));
-  items.push({name:"Super-Coupe mondiale", detail:"Vainqueurs des 7 Ligues des champions", s:addDays(base,6), e:addDays(base,6)});
-  if(season%3===0) items.push({name:"Coupe continentale", detail:"Tous les 3 saisons", s:addDays(base,7), e:addDays(base,7)});
-  if(season%6===0) items.push({name:"Coupe du monde", detail:"Toutes les 6 saisons", s:addDays(base,7), e:addDays(base,7)});
+  items.push({name:"Championnats nationaux", detail:"Toutes les ligues · 5 journées sur 3 jours (dernière à 18:00)", s:addDays(base,0), e:addDays(base,2)});
+  items.push({name:"Coupes nationales", detail:"Élimination directe, par pays", s:addDays(base,1), e:addDays(base,3)});
+  items.push({name:"Ligue des champions", detail:"2 meilleurs par pays · barrages, poules puis phases finales", s:addDays(base,3), e:addDays(base,6)});
+  items.push({name:"Super-Coupe mondiale", detail:"Vainqueurs des Ligues des champions de chaque zone", s:addDays(base,7), e:addDays(base,7)});
+  if(season%6===0) items.push({name:"Coupe du monde", detail:"32 nations qualifiées · toutes les 6 saisons", s:addDays(base,3), e:addDays(base,8)});
+  else if(season%2===0) items.push({name:"Coupe continentale", detail:"Par zone · toutes les 2 saisons (hors saison de Coupe du monde)", s:addDays(base,3), e:addDays(base,8)});
   items.sort((a,b)=>a.s-b.s);
+
   let html=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
       <h2 style="font-size:26px">Saison ${season}</h2><span class="pill">Année ${year}</span></div>
-      <p style="color:var(--muted);font-size:13px;margin-top:6px">Agenda des compétitions. Les compétitions continentales et la Super-Coupe seront jouables dans la prochaine mise à jour.</p></div>
-    <div class="card"><h3 style="font-size:18px;margin-bottom:10px">Programme de la saison</h3>`;
+      <p style="color:var(--muted);font-size:13px;margin-top:6px">Toutes les compétitions se jouent automatiquement aux dates prévues (heure locale).</p></div>`;
+  html+=mineHtml;
+  html+=`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">Programme de la saison</h3>`;
   items.forEach(it=>{
     const status = now>it.e ? "Terminé" : (now>=it.s ? "En cours" : "À venir");
     const col = status==="En cours"?"var(--orange)":status==="Terminé"?"var(--muted)":"var(--green)";
@@ -1882,11 +1920,29 @@ async function placeBid(id, amt, btn){
 async function renderHall(){
   const el=$("tab-hall");
   el.innerHTML='<div class="loading">Chargement…</div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
   const { data } = await supa.from("hall_of_fame").select("*").order("season",{ascending:false});
-  const rows=data||[];
+  let rows=data||[];
+  // Vainqueurs de la saison en cours, déjà décidés mais pas encore archivés
+  const catMap={champions_league:'Ligue des champions',super_cup:'Super-Coupe',national_cup:'Coupe nationale',continental_cup:'Coupe continentale',world_cup:'Coupe du monde'};
+  try{
+    const [{data:comps},{data:ncomps}]=await Promise.all([
+      supa.from("competitions").select("type,name,winner_team_id,season").eq("season",cs).not("winner_team_id","is",null),
+      supa.from("national_competitions").select("type,name,winner_country,season").eq("season",cs).not("winner_country","is",null)
+    ]);
+    const tids=[...new Set((comps||[]).map(c=>c.winner_team_id))];
+    const tmap={}; if(tids.length){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",tids); (tt||[]).forEach(t=>tmap[t.id]=t); }
+    const extra=[];
+    (comps||[]).forEach(c=>{ const t=tmap[c.winner_team_id]; if(t) extra.push({season:c.season,category:catMap[c.type]||c.type,title:c.name||'',winner_name:t.name,flag_code:t.country_code,_live:true}); });
+    (ncomps||[]).forEach(c=>{ extra.push({season:c.season,category:catMap[c.type]||c.type,title:c.name||'',winner_name:countryName(c.winner_country),flag_code:c.winner_country,_live:true}); });
+    const key=r=>r.season+'|'+r.category+'|'+(r.winner_name||'');
+    const have=new Set(rows.map(key));
+    extra.forEach(e=>{ if(!have.has(key(e))){ rows.push(e); have.add(key(e)); } });
+  }catch(e){}
   if(!rows.length){
-    el.innerHTML=`<div class="card"><h2 style="font-size:22px;margin-bottom:6px">Panthéon</h2>
-      <p style="color:var(--muted)">Aucun palmarès pour l'instant. Les vainqueurs de chaque compétition seront enregistrés ici à la fin de chaque saison.</p></div>`;
+    el.innerHTML=`<div class="card"><h2 style="font-size:22px;margin-bottom:6px">🏛️ Panthéon</h2>
+      <p style="color:var(--muted)">Aucun palmarès pour l'instant. Les vainqueurs des compétitions apparaîtront ici dès qu'ils seront couronnés.</p></div>`;
     return;
   }
   const order=["Ballon d'Or","Coupe du monde","Coupe continentale","Ligue des champions","Super-Coupe","Coupe nationale","Championnat"];
@@ -1899,7 +1955,7 @@ async function renderHall(){
     const list=byCat[cat].slice().sort((a,b)=>b.season-a.season);
     html+=`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">${esc(cat)}</h3>`;
     list.forEach(r=>{
-      html+=`<div class="match"><span class="side">${flag(r.flag_code,15)} <b>${esc(r.winner_name||'—')}</b></span>
+      html+=`<div class="match"><span class="side">${flag(r.flag_code,15)} <b>${esc(r.winner_name||'—')}</b>${r._live?' <span style="color:var(--green);font-size:11px">🆕 récent</span>':''}</span>
         <span style="color:var(--muted);font-size:12px;text-align:right">${esc(r.title||'')}<br><span style="color:var(--orange);font-family:'Space Mono',monospace">Saison ${r.season}</span></span></div>`;
     });
     html+=`</div>`;
