@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futsal Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#14231C; --panel:#1C2E25; --panel-2:#233b30; --line:#2E4A3C;
+    --chalk:#EDEBDF; --muted:#8AA093; --green:#58C08A; --orange:#EF8B4B;
+    --danger:#E06B5A; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--board);color:var(--chalk);min-height:100vh;line-height:1.5;
+    background-image:radial-gradient(1200px 500px at 50% -10%, rgba(88,192,138,.08), transparent 60%);}
+  h1,h2,h3,.display{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+  .num{font-family:'Space Mono',monospace}
+  .wrap{max-width:900px;margin:0 auto;padding:20px}
+  .hidden{display:none !important}
+
+  .flag-img{display:inline-block;border-radius:2px;vertical-align:middle;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .flag-ph{display:inline-flex;align-items:center;justify-content:center;background:var(--panel-2);border-radius:2px;vertical-align:middle;color:var(--muted);font-size:11px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(20,35,28,.92);backdrop-filter:blur(6px);z-index:20}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(239,139,75,.2)}
+  .brand h1{font-size:20px}
+  .brand small{color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-top:-2px}
+  .topright{display:flex;align-items:center;gap:14px}
+  .budget{font-family:'Space Mono',monospace;font-size:13px;color:var(--green);white-space:nowrap;text-align:right}
+  .budget span{color:var(--muted);font-family:'Inter';font-size:10px;text-transform:uppercase;letter-spacing:.08em;display:block}
+  .logout{background:none;border:1px solid var(--line);color:var(--muted);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  .club-select{width:auto;max-width:150px;background:var(--board);border:1px solid var(--line);color:var(--chalk);padding:6px 26px 6px 10px;border-radius:8px;font-size:13px;font-family:inherit;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 12 8'%3E%3Cpath fill='%238AA093' d='M6 8 0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .logout:hover{color:var(--chalk);border-color:var(--green)}
+
+  .nav{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;border-bottom:1px solid var(--line);position:sticky;top:57px;background:rgba(20,35,28,.92);backdrop-filter:blur(6px);z-index:15;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{background:none;border:none;color:var(--muted);padding:9px 13px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.04em;border-radius:8px;white-space:nowrap}
+  .nav button.active{color:var(--chalk);background:var(--panel)}
+  .nav button:hover{color:var(--chalk)}
+  .subnav{display:flex;gap:6px;margin-bottom:14px}
+  .subnav button{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.04em}
+  .subnav button.active{color:var(--chalk);border-color:var(--orange)}
+  .season-clock{padding:7px 20px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--panel);text-align:center;font-family:'Space Mono',monospace}
+  .season-clock b{color:var(--orange)}
+  .badge{display:inline-block;background:#ff4444;color:#fff;font-size:10px;font-weight:700;line-height:1;border-radius:9px;padding:2px 5px;margin-left:5px;vertical-align:middle;min-width:8px;text-align:center}
+  .bkt-wrap{display:flex;gap:16px;overflow-x:auto;padding:4px 0 10px}
+  .bkt-col{flex:0 0 auto;min-width:190px;display:flex;flex-direction:column}
+  .bkt-round{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:13px;color:var(--muted);text-align:center;margin-bottom:8px}
+  .bkt-cards{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:12px}
+  .bkt-match{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .bkt-side{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;font-size:13px}
+  .bkt-side+.bkt-side{border-top:1px solid var(--line)}
+  .bkt-side.w{color:var(--green);font-weight:600}
+  .bkt-side b{font-family:'Space Mono',monospace}
+  .bkt-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .season-clock .sep{color:var(--line);margin:0 8px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:16px}
+  .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .auth-card{width:100%;max-width:400px}
+  .auth-head{text-align:center;margin-bottom:20px}
+  .auth-head .dot{width:14px;height:14px;border-radius:50%;background:var(--orange);margin:0 auto 12px;box-shadow:0 0 0 5px rgba(239,139,75,.18)}
+  .auth-head h1{font-size:34px}
+  .auth-head p{color:var(--muted);font-size:13px}
+  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px}
+  input,select{width:100%;background:var(--board);border:1px solid var(--line);color:var(--chalk);padding:12px 14px;border-radius:10px;font-size:15px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--green)}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238AA093' d='M6 8 0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  .btn{width:100%;background:var(--green);color:#0c1712;border:none;padding:13px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:18px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.06em}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-orange{background:var(--orange)}
+  .btn-small{width:auto;margin-top:0;padding:8px 14px;font-size:13px}
+  .switch{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
+  .switch a{color:var(--green);cursor:pointer;text-decoration:none}
+  .msg{margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;display:none}
+  .msg.error{background:rgba(224,107,90,.12);color:var(--danger);border:1px solid rgba(224,107,90,.3);display:block}
+  .msg.info{background:rgba(88,192,138,.1);color:var(--green);border:1px solid rgba(88,192,138,.25);display:block}
+  .flag-preview{text-align:center;margin:6px 0 2px}
+
+  .team-hero{display:flex;align-items:center;gap:16px}
+  .team-hero h2{font-size:28px}
+  .team-hero .meta{color:var(--muted);font-size:13px}
+  .pill{display:inline-block;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-size:11px;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;margin-right:5px}
+
+  .player{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .player:last-child{border-bottom:none}
+  .pos{width:74px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);flex-shrink:0}
+  .pname{flex:1;font-weight:500}
+  .page{color:var(--muted);font-size:13px;margin-right:8px}
+  .rating{font-family:'Space Mono',monospace;font-size:18px;width:38px;text-align:right}
+  .r-hi{color:var(--green)} .r-mid{color:var(--chalk)} .r-lo{color:var(--muted)}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:12px;letter-spacing:.06em;color:var(--muted);text-align:center;padding:8px 4px;border-bottom:1px solid var(--line)}
+  th.left,td.left{text-align:left}
+  td{padding:11px 4px;text-align:center;border-bottom:1px solid var(--line);font-size:14px}
+  td.num{font-family:'Space Mono',monospace}
+  tr.me td{background:rgba(239,139,75,.08)}
+  tr.qualif td.rank{box-shadow:inset 3px 0 0 var(--green)}
+  tr.releg td.rank{box-shadow:inset 3px 0 0 var(--danger)}
+  tr.me .tname span{color:var(--orange);font-weight:600}
+  .rank{color:var(--muted);width:24px}
+  .tname{display:flex;align-items:center;gap:7px;text-align:left}
+
+  .md-group{margin-bottom:18px}
+  .md-title{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:14px;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .md-title::after{content:'';flex:1;height:1px;background:var(--line)}
+  .match{display:flex;align-items:center;justify-content:space-between;background:var(--board);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:7px}
+  .match .side{flex:1;display:flex;align-items:center;gap:7px;font-size:14px;min-width:0}
+  .match .side.away{justify-content:flex-end}
+  .match .side .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .match .side.me{color:var(--orange);font-weight:600}
+  .score{font-family:'Space Mono',monospace;font-size:16px;padding:0 14px;white-space:nowrap}
+  .score.pending{color:var(--muted);font-size:12px}
+
+  .row-actions{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+
+  .league-item{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .league-item:last-child{border-bottom:none}
+  .league-item:hover .lg-name{color:var(--green)}
+  .lg-name{font-weight:600}
+  .lg-sub{color:var(--muted);font-size:12px}
+  .arrow{margin-left:auto;color:var(--muted)}
+  .back{color:var(--green);cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:5px;margin-bottom:14px}
+
+  .market-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .market-row:last-child{border-bottom:none}
+  .mk-info{flex:1;min-width:0}
+  .mk-name{font-weight:600}
+  .mk-sub{color:var(--muted);font-size:12px}
+  .mk-rating{font-family:'Space Mono',monospace;font-size:18px;width:34px;text-align:center}
+  .mk-price{font-family:'Space Mono',monospace;font-size:13px;color:var(--green);text-align:right;white-space:nowrap}
+  .countdown{font-family:'Space Mono',monospace;font-size:12px;color:var(--orange)}
+  .filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .filter-bar input,.filter-bar select{width:auto;flex:1;min-width:120px;padding:9px 12px;font-size:14px}
+
+  .chat-box{display:flex;flex-direction:column;height:60vh;min-height:340px}
+  .chat-msgs{flex:1;overflow-y:auto;padding:4px 2px;display:flex;flex-direction:column;gap:8px}
+  .chat-msg{background:var(--board);border:1px solid var(--line);border-radius:10px;padding:9px 12px;max-width:85%}
+  .chat-msg.mine{align-self:flex-end;background:var(--panel-2);border-color:var(--green)}
+  .chat-who{font-size:11px;color:var(--green);font-weight:600;margin-bottom:2px}
+  .chat-msg.mine .chat-who{color:var(--orange)}
+  .chat-text{font-size:14px;word-break:break-word}
+  .chat-time{font-size:10px;color:var(--muted);margin-top:2px}
+  .chat-input{display:flex;gap:8px;margin-top:12px}
+  .chat-input input{flex:1}
+  .chat-input button{margin-top:0;width:auto;padding:0 20px}
+
+  .loading{text-align:center;color:var(--muted);padding:40px}
+  .agenda-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:100;overflow-y:auto}
+  .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;max-width:520px;width:100%}
+  .team-link{cursor:pointer}
+  .team-link:hover span{color:var(--green)}
+  .player-link:hover{color:var(--green)}
+  .ev-row{font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
+  .ev-min{color:var(--muted);margin-right:4px}
+  .agenda-row:last-child{border-bottom:none}
+  .ag-name{font-weight:600}
+  .ag-detail{color:var(--muted);font-size:12px}
+  .ag-date{font-family:'Space Mono',monospace;font-size:13px}
+  .ag-status{font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .empty{text-align:center;color:var(--muted);padding:30px;font-size:14px}
+  .setup-warn{max-width:520px;margin:60px auto;text-align:center}
+  .setup-warn code{background:var(--panel);padding:2px 6px;border-radius:5px;color:var(--orange);font-size:13px}
+  @media(max-width:520px){.team-hero h2{font-size:22px} .pos{width:60px} th.hide,td.hide{display:none}}
+  @media(max-width:640px){
+    .wrap{padding:12px}
+    .topbar{padding:12px 12px;gap:8px}
+    .brand h1{font-size:16px}
+    .brand small{font-size:10px}
+    .brand .dot{width:9px;height:9px}
+    .topright{gap:8px}
+    .club-select{max-width:104px;font-size:12px;padding:6px 22px 6px 8px}
+    .budget{font-size:11px}
+    .logout{padding:6px 9px;font-size:12px}
+    .nav{padding:8px 12px;gap:4px}
+    .nav button{font-size:14px;padding:9px 11px;white-space:nowrap;flex:0 0 auto}
+    .subnav{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+    .subnav button{flex:0 0 auto;white-space:nowrap}
+    .card{padding:15px}
+    .player{gap:8px;padding:10px 0}
+    .match{padding:9px 10px}
+    .match .nm{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+    .season-clock{font-size:11px;padding:6px 10px;line-height:1.5}
+    .modal-ov{padding:12px 8px}
+    .modal-card{padding:16px;max-height:90vh;overflow-y:auto}
+    table{font-size:13px}
+    .btn{padding:11px 14px}
+  }
+</style>
+</head>
+<body>
+
+<div id="setupScreen" class="setup-warn hidden">
+  <div class="brand" style="justify-content:center;margin-bottom:14px"><span class="dot"></span><h1>Futsal Manager</h1></div>
+  <div class="card"><h2 style="font-size:22px;margin-bottom:10px">Configuration requise</h2>
+    <p style="color:var(--muted);font-size:14px">Remplis <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> en haut du script, puis recharge.</p></div>
+</div>
+
+<div id="authScreen" class="center-screen hidden">
+  <div class="card auth-card">
+    <div class="auth-head"><div class="dot"></div><h1>Futsal Manager</h1><p id="authSubtitle">Connecte-toi pour gérer ton club</p></div>
+    <label>Pseudo</label><input id="pseudo" type="text" placeholder="ton_pseudo" autocomplete="username">
+    <label>Mot de passe</label><input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+    <button id="authBtn" class="btn">Se connecter</button>
+    <div id="authMsg" class="msg"></div>
+    <div class="switch" id="authSwitch">Pas encore de compte ? <a id="switchLink">Créer un compte</a></div>
+  </div>
+</div>
+
+<div id="createScreen" class="center-screen hidden">
+  <div class="card auth-card">
+    <div class="auth-head"><div class="dot"></div><h1>Ton club</h1><p>Choisis ton pays et le nom de ton équipe</p></div>
+    <div id="flagPreview" class="flag-preview"></div>
+    <label>Pays</label><select id="countrySelect"></select>
+    <label>Nom de l'équipe</label><input id="teamName" type="text" placeholder="Ex : Les Pumas">
+    <button id="createBtn" class="btn btn-orange">Créer mon équipe</button>
+    <div id="createMsg" class="msg"></div>
+    <div id="cancelCreate" class="switch hidden"><a>Annuler</a></div>
+  </div>
+</div>
+
+<div id="gameScreen" class="hidden">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span><div><h1>Futsal Manager</h1><small id="userPseudo"></small></div></div>
+    <div class="topright"><select id="clubSelect" class="club-select"></select><div class="budget"><span>Budget</span><b id="budgetVal">—</b></div>
+      <button id="logoutBtn" class="logout">Quitter</button></div>
+  </div>
+  <div id="seasonClock" class="season-clock"></div>
+  <div class="nav" id="nav">
+    <button class="active" data-tab="team">Équipe</button>
+    <button data-tab="league">Championnat</button>
+    <button data-tab="agenda">Agenda</button>
+    <button data-tab="selection">Sélections</button>
+    <button data-tab="monde">Monde</button>
+    <button data-tab="hall">Panthéon</button>
+    <button data-tab="players">Joueurs actifs</button>
+    <button data-tab="bdor">Ballon d'Or</button>
+    <button data-tab="market">Marché</button>
+    <button data-tab="chat">Tchat<span id="chatBadge" class="badge hidden"></span></button>
+  </div>
+  <div class="wrap">
+    <div id="tab-team">
+      <div class="subnav"><button class="active" data-sub="team:squad">Effectif</button><button data-sub="team:calendar">Calendrier</button></div>
+      <div id="tab-squad"></div>
+      <div id="tab-calendar" class="hidden"></div>
+    </div>
+    <div id="tab-league" class="hidden"></div>
+    <div id="tab-agenda" class="hidden"></div>
+    <div id="tab-selection" class="hidden"></div>
+    <div id="tab-monde" class="hidden">
+      <div class="subnav">
+        <button class="active" data-sub="monde:leagues">Ligues</button>
+        <button data-sub="monde:cl">Champions</button>
+        <button data-sub="monde:coupes">Coupes</button>
+        <button data-sub="monde:gazette">La Gazette</button>
+      </div>
+      <div id="tab-leagues"></div>
+      <div id="tab-cl" class="hidden"></div>
+      <div id="tab-coupes" class="hidden"></div>
+      <div id="tab-gazette" class="hidden"></div>
+    </div>
+    <div id="tab-hall" class="hidden"></div>
+    <div id="tab-players" class="hidden"></div>
+    <div id="tab-bdor" class="hidden"></div>
+    <div id="tab-market" class="hidden">
+      <div class="subnav"><button class="active" data-sub="market:mercato">Mercato</button><button data-sub="market:auctions">Enchères</button></div>
+      <div id="tab-mercato"></div>
+      <div id="tab-auctions" class="hidden"></div>
+    </div>
+    <div id="tab-chat" class="hidden"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+const SUPABASE_URL      = "https://cjzvmqirlkcocrbidjbd.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqenZtcWlybGtjb2NyYmlkamJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNzQ5NjAsImV4cCI6MjA5ODc1MDk2MH0.mdY2nrtOP08NrFUgMA4I7Eo0C8QiMpC8neGPmEX-h1c";
+/* ============================================================ */
+
+const EMAIL_DOMAIN = "futsal-manager.app";
+
+let ALL_COUNTRIES=[];              // {code,name,zone} depuis la base
+const COUNTRY_MAP={};              // code -> {n, zone}
+const ZONES=["Europe","Afrique","Asie","Moyen-Orient","Amérique du Nord","Amérique latine","Caraïbe","Océanie"];
+
+async function loadCountries(){
+  const { data } = await supa.from("countries").select("code,name,zone").order("name");
+  ALL_COUNTRIES=data||[];
+  ALL_COUNTRIES.forEach(c=>COUNTRY_MAP[c.code]={n:c.name, zone:c.zone});
+}
+function countryName(code){ return COUNTRY_MAP[code]?COUNTRY_MAP[code].n:code; }
+function countryZone(code){ return COUNTRY_MAP[code]?COUNTRY_MAP[code].zone:"Autres"; }
+
+function flag(code,h){
+  h=h||16; const w=Math.round(h*4/3);
+  if(code&&code.length===2) return `<img class="flag-img" src="https://flagcdn.com/h40/${code.toLowerCase()}.png" style="height:${h}px;width:${w}px" alt="" loading="lazy">`;
+  return `<span class="flag-ph" style="height:${h}px;width:${w}px">⚑</span>`;
+}
+
+let supa=null, myTeam=null, myTeams=[], activeTeamId=null, myChampId=null, myUserId=null, myPseudo="manager", currentTab="squad";
+let chatChannel=null, chatPollTimer=null, auctionTimer=null, selectionTimer=null, selRefreshTimer=null;
+let gameSeason=1, gameYear=2025, gameSeasonStart=null, clockTimer=null, chatBadgeTimer=null, presenceTimer=null;
+let squadStarters=new Set(), squadList=[];
+const TACTICS=["Pressing haut","Bloc bas","Jeu de position","Contre-attaque","Power play","Rotation"];
+function tacticBeats(i){ return [TACTICS[(i+1)%6], TACTICS[(i+2)%6]]; }
+function tacticCardHtml(){
+  const cur=(myTeam&&myTeam.tactic!=null)?myTeam.tactic:2;
+  const opts=TACTICS.map((n,i)=>`<option value="${i}" ${i===cur?'selected':''}>${n}</option>`).join("");
+  const b=tacticBeats(cur);
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+      <h3 style="font-size:18px">Tactique</h3><button id="saveTactic" class="btn btn-small">Enregistrer</button></div>
+    <select id="tacticSel">${opts}</select>
+    <p id="tacticHint" style="color:var(--muted);font-size:12px;margin-top:8px">Avantage contre : ${b[0]} et ${b[1]}.</p>
+  </div>`;
+}
+
+const $ = id => document.getElementById(id);
+function show(id){ ["setupScreen","authScreen","createScreen","gameScreen"].forEach(s=>$(s).classList.add("hidden")); $(id).classList.remove("hidden"); }
+function msg(el,t,type){ el.className="msg "+type; el.textContent=t; }
+function clearMsg(el){ el.className="msg"; el.textContent=""; }
+function fmtMoney(n){ return (n||0).toLocaleString("fr-FR")+" €"; }
+function updateClock(){
+  const el=$("seasonClock"); if(!el) return;
+  const now=new Date();
+  const dateStr=now.toLocaleString("fr-FR",{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  let dayNum="";
+  if(gameSeasonStart){ const d=Math.floor((now-gameSeasonStart)/86400000)+1; dayNum=`<span class="sep">·</span>Jour ${d}`; }
+  el.innerHTML=`<b>Saison ${gameSeason}</b> <span style="color:var(--muted)">(${gameYear})</span>${dayNum}<span class="sep">·</span>${dateStr} <span style="color:var(--muted)">(heure locale)</span>`;
+}
+async function updateChatBadge(){
+  if(!myUserId) return;
+  const key='fm_chat_read_'+myUserId;
+  let lastRead;
+  try{ lastRead=localStorage.getItem(key); }catch(e){}
+  if(!lastRead){ lastRead=new Date().toISOString(); try{ localStorage.setItem(key,lastRead); }catch(e){} }
+  const b=$("chatBadge"); if(!b) return;
+  try{
+    const { count } = await supa.from("messages").select("id",{count:'exact',head:true}).gt("created_at",lastRead).neq("user_id",myUserId);
+    if(count && count>0){ b.textContent = count>99?'99+':count; b.classList.remove("hidden"); }
+    else b.classList.add("hidden");
+  }catch(e){}
+}
+function markChatRead(){
+  if(!myUserId) return;
+  try{ localStorage.setItem('fm_chat_read_'+myUserId, new Date().toISOString()); }catch(e){}
+  const b=$("chatBadge"); if(b) b.classList.add("hidden");
+}
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+window.addEventListener("DOMContentLoaded", ()=>{
+  init().catch(err=>{
+    console.error(err);
+    document.body.innerHTML =
+      '<div style="max-width:540px;margin:60px auto;padding:26px;font-family:Inter,system-ui,sans-serif;color:#EDEBDF">'
+      + '<h2 style="font-family:Barlow Condensed,sans-serif;text-transform:uppercase">Erreur au chargement</h2>'
+      + '<p style="color:#E06B5A;background:rgba(224,107,90,.12);border:1px solid rgba(224,107,90,.3);padding:10px 12px;border-radius:9px">'
+      + String((err && err.message) || err) + '</p>'
+      + '<p style="color:#8AA093;font-size:13px">Le jeu charge Supabase depuis Internet : vérifie ta connexion, puis recharge la page (Ctrl+Maj+R pour vider le cache). Ouvre la console (F12) pour plus de détails.</p></div>';
+  });
+});
+
+async function init(){
+  if(SUPABASE_URL.startsWith("COLLE")||SUPABASE_ANON_KEY.startsWith("COLLE")){ show("setupScreen"); return; }
+  supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  await loadCountries();
+  buildCountrySelect(); wireEvents();
+  const { data:{ session } } = await supa.auth.getSession();
+  if(session) await afterLogin(); else show("authScreen");
+}
+
+function buildCountrySelect(){
+  const sel=$("countrySelect"); sel.innerHTML="";
+  ZONES.forEach(z=>{
+    const inZone=ALL_COUNTRIES.filter(c=>c.zone===z);
+    if(!inZone.length) return;
+    const og=document.createElement("optgroup"); og.label=z;
+    inZone.forEach(co=>{ const o=document.createElement("option"); o.value=co.code; o.textContent=co.name; o.dataset.name=co.name; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  updateFlagPreview(); sel.addEventListener("change", updateFlagPreview);
+}
+function updateFlagPreview(){ $("flagPreview").innerHTML=flag($("countrySelect").value,40); }
+
+let isSignup=false;
+function wireEvents(){
+  $("authSwitch").addEventListener("click", e=>{
+    if(e.target.id!=="switchLink") return;
+    isSignup=!isSignup;
+    $("authBtn").textContent=isSignup?"Créer mon compte":"Se connecter";
+    $("authSubtitle").textContent=isSignup?"Crée ton compte de manager":"Connecte-toi pour gérer ton club";
+    $("authSwitch").innerHTML=isSignup?'Déjà un compte ? <a id="switchLink">Se connecter</a>':'Pas encore de compte ? <a id="switchLink">Créer un compte</a>';
+    clearMsg($("authMsg"));
+  });
+  $("authBtn").addEventListener("click", handleAuth);
+  $("password").addEventListener("keydown", e=>{ if(e.key==="Enter") handleAuth(); });
+  $("createBtn").addEventListener("click", handleCreateTeam);
+  $("logoutBtn").addEventListener("click", async()=>{ await supa.auth.signOut(); location.reload(); });
+  $("clubSelect").addEventListener("change", ()=>{
+    const v=$("clubSelect").value;
+    if(v==="__new__"){ renderClubSelect(); newClub(); return; }
+    setActiveTeam(v);
+  });
+  $("cancelCreate").addEventListener("click", ()=>{
+    if(myTeams.length){ $("cancelCreate").classList.add("hidden"); show("gameScreen"); switchTab(currentTab||"team"); }
+  });
+  $("nav").querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
+  document.querySelectorAll(".subnav button").forEach(b=>b.addEventListener("click", ()=>{
+    const [g,w]=b.dataset.sub.split(":"); showSub(g,w);
+  }));
+  document.addEventListener("click", e=>{
+    const tl=e.target.closest(".team-link");
+    if(tl && tl.dataset.team){ openTeamModal(tl.dataset.team); return; }
+    const ml=e.target.closest(".match-link");
+    if(ml && ml.dataset.match){ openMatchModal(ml.dataset.match); return; }
+    const pl=e.target.closest(".player-link");
+    if(pl && pl.dataset.pid) openPlayerActionModal(pl.dataset.pid);
+  });
+}
+async function openTeamModal(teamId){
+  let ov=$("teamModal");
+  if(!ov){ ov=document.createElement("div"); ov.id="teamModal"; ov.className="modal-ov"; document.body.appendChild(ov);
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); }); }
+  ov.innerHTML='<div class="modal-card"><div class="loading">Chargement…</div></div>';
+  const [tR,pR]=await Promise.all([
+    supa.from("teams").select("*").eq("id", teamId).single(),
+    supa.from("players").select("*").eq("team_id", teamId).order("rating",{ascending:false})
+  ]);
+  const t=tR.data, players=pR.data||[];
+  if(!t){ ov.remove(); return; }
+  const [mR, hR]=await Promise.all([
+    supa.from("matches").select("home_team_id,away_team_id,home_score,away_score,matchday,played").or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`).eq("played",true),
+    supa.from("hall_of_fame").select("category,season").eq("winner_name", t.name)
+  ]);
+  const tmatches=(mR.data||[]).sort((a,b)=>(b.matchday||0)-(a.matchday||0));
+  let streak=0; for(const m of tmatches){ const home=m.home_team_id===teamId; const won=home?m.home_score>m.away_score:m.away_score>m.home_score; if(won) streak++; else break; }
+  const clubCats=['Championnat','Coupe nationale','Ligue des champions','Super-Coupe'];
+  const trophies=(hR.data||[]).filter(x=>clubCats.includes(x.category));
+  const avg=players.length?Math.round(players.reduce((s,p)=>s+p.rating,0)/players.length):0;
+  const squadValue=players.reduce((s,p)=>s+p.rating*15000,0);
+  const trophyLabel={'Ligue des champions':'🏆 C1','Super-Coupe':'🥇 Super-Coupe','Coupe nationale':'🏆 Coupe','Championnat':'🏅 Titre'};
+  const trophyCounts={}; trophies.forEach(x=>{ trophyCounts[x.category]=(trophyCounts[x.category]||0)+1; });
+  const trophyHtml = trophies.length
+    ? Object.keys(trophyCounts).map(c=>`${trophyLabel[c]||c} ×${trophyCounts[c]}`).join(' · ')
+    : '<span style="color:var(--muted)">Aucun trophée</span>';
+  let html=`<div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div class="team-hero" style="gap:12px">${flag(t.country_code,34)}<div><h2 style="font-size:22px">${esc(t.name)}</h2>
+      <div class="meta" style="color:var(--muted);font-size:13px">${esc(t.country_name)} · Note moy. ${avg} · Valeur ${fmtMoney(squadValue)}</div></div></div>
+      <button class="logout" id="closeModal">Fermer</button></div>
+    <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+      <span>🔥 Série : <b>${streak}</b> victoire${streak>1?'s':''}</span>
+      <span>🏆 Palmarès : ${trophyHtml}</span>
+    </div>
+    <div style="margin-top:14px">`;
+  const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
+  players.forEach(p=>{ const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo"; const fee=p.rating*15000;
+    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
+      ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
+  html+=`<div id="offerMsg" class="msg"></div>`;
+  ov.innerHTML=html+`</div></div>`;
+  $("closeModal").addEventListener("click", ()=>ov.remove());
+  ov.querySelectorAll(".offer-btn").forEach(b=>b.addEventListener("click", async()=>{
+    const fee=+b.dataset.fee;
+    if(myTeam.budget<fee){ msg($("offerMsg"),"Budget insuffisant.","error"); return; }
+    b.disabled=true; b.textContent="…";
+    const { data, error } = await supa.rpc("propose_transfer",{ p_player_id:b.dataset.id, p_fee:fee, p_team:myTeam.id });
+    if(error){ msg($("offerMsg"), error.message, "error"); b.disabled=false; b.textContent="Proposer"; return; }
+    if(data==='accepted'){ msg($("offerMsg"),"Transfert accepté ! Joueur recruté.","info"); await refreshMyTeam(); b.textContent="Recruté ✓"; }
+    else { msg($("offerMsg"),"Proposition refusée. Tu peux retenter.","error"); b.disabled=false; b.textContent=`Proposer · ${fmtMoney(fee)}`; }
+  }));
+}
+
+async function openPlayerActionModal(playerId){
+  if(!myTeam) return;
+  const { data:p } = await supa.from("players").select("*").eq("id", playerId).single();
+  if(!p || p.team_id!==myTeam.id) return;
+  const value=p.rating*12000;
+  let ov=$("playerModal");
+  if(!ov){ ov=document.createElement("div"); ov.id="playerModal"; ov.className="modal-ov"; document.body.appendChild(ov);
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); }); }
+  const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+  ov.innerHTML=`<div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
+      <div class="meta" style="color:var(--muted);font-size:13px">${p.position} · ${p.age} ans · <span class="${cls}">Note ${p.rating}</span></div>
+      <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">💰 ${fmtMoney(p.salary||0)}/saison · 📄 Contrat jusqu'en S${p.contract_until||'?'}</div></div>
+      <button class="logout" id="closePM">Fermer</button></div>
+    <div class="row-actions" style="margin-top:18px">
+      <button id="sellP" class="btn btn-orange btn-small">Vendre · ${fmtMoney(value)}</button>
+      <button id="renewP" class="btn btn-small" style="background:var(--panel-2);border:1px solid var(--line)">Prolonger 2 ans · ${fmtMoney(p.salary||Math.max(20000,p.rating*3000))}</button>
+      <button id="releaseP" class="btn btn-small" style="background:var(--panel-2);color:var(--danger);border:1px solid var(--line)">Licencier</button>
+    </div>
+    <div id="pmMsg" class="msg"></div></div>`;
+  $("closePM").addEventListener("click", ()=>ov.remove());
+  $("renewP").addEventListener("click", async()=>{
+    $("renewP").disabled=true;
+    const { data, error } = await supa.rpc("renew_contract",{ p_player_id:playerId, p_team:myTeam.id, p_years:2 });
+    if(error){ msg($("pmMsg"), error.message, "error"); $("renewP").disabled=false; return; }
+    msg($("pmMsg"), "Contrat prolongé de 2 saisons (prime : "+fmtMoney(data)+").", "info");
+    await refreshMyTeam(); setTimeout(()=>{ ov.remove(); renderSquad(); }, 900);
+  });
+  $("sellP").addEventListener("click", async()=>{
+    $("sellP").disabled=true; $("releaseP").disabled=true;
+    const { error } = await supa.rpc("sell_player",{ p_player_id:playerId, p_team:myTeam.id });
+    if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
+    ov.remove(); await refreshMyTeam(); renderSquad();
+  });
+  $("releaseP").addEventListener("click", async()=>{
+    if(!confirm("Licencier ce joueur ? (aucun remboursement)")) return;
+    $("sellP").disabled=true; $("releaseP").disabled=true;
+    const { error } = await supa.rpc("release_player",{ p_player_id:playerId, p_team:myTeam.id });
+    if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
+    ov.remove(); await refreshMyTeam(); renderSquad();
+  });
+}
+
+async function openMatchModal(matchId){
+  let ov=$("matchModal");
+  if(!ov){ ov=document.createElement("div"); ov.id="matchModal"; ov.className="modal-ov"; document.body.appendChild(ov);
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); }); }
+  ov.innerHTML='<div class="modal-card"><div class="loading">Chargement…</div></div>';
+  // Trouver le match dans l'une des trois tables
+  let m=null, isNation=false;
+  let r=await supa.from("matches").select("*").eq("id", matchId).limit(1);
+  if(r.data&&r.data.length) m=r.data[0];
+  if(!m){ r=await supa.from("competition_matches").select("*").eq("id", matchId).limit(1); if(r.data&&r.data.length) m=r.data[0]; }
+  if(!m){ r=await supa.from("national_matches").select("*").eq("id", matchId).limit(1); if(r.data&&r.data.length){ m=r.data[0]; isNation=true; } }
+  if(!m){ ov.remove(); return; }
+
+  const evR=await supa.from("match_events").select("*").eq("match_id", matchId).order("minute");
+  const ev=evR.data||[];
+  const pids=[...new Set(ev.flatMap(e=>[e.scorer_id,e.assist_id]).filter(Boolean))];
+  const pmap={}; if(pids.length){ const {data:pl}=await supa.from("players").select("id,name,nationality").in("id",pids); (pl||[]).forEach(p=>pmap[p.id]=p); }
+
+  let homeLabel, awayLabel, homeCode, awayCode;
+  if(isNation){ homeCode=m.home_country; awayCode=m.away_country; homeLabel=countryName(m.home_country); awayLabel=countryName(m.away_country); }
+  else {
+    const { data:tt } = await supa.from("teams").select("id,name,country_code").in("id",[m.home_team_id,m.away_team_id]);
+    const tm={}; (tt||[]).forEach(t=>tm[t.id]=t);
+    homeCode=tm[m.home_team_id]?.country_code; awayCode=tm[m.away_team_id]?.country_code;
+    homeLabel=tm[m.home_team_id]?.name||'?'; awayLabel=tm[m.away_team_id]?.name||'?';
+  }
+  const sideOf=e=> isNation ? ((pmap[e.scorer_id]?.nationality===m.home_country)?'home':'away') : (e.team_id===m.home_team_id?'home':'away');
+  const evLine=e=>{ const sc=pmap[e.scorer_id], as=pmap[e.assist_id];
+    return `<div class="ev-row"><span class="ev-min num">${e.minute}'</span> ⚽ <b>${sc?esc(sc.name):'?'}</b>${as?` <span style="color:var(--muted)">(passe : ${esc(as.name)})</span>`:''}</div>`; };
+  const evHome=ev.filter(e=>sideOf(e)==='home').sort((a,b)=>a.minute-b.minute);
+  const evAway=ev.filter(e=>sideOf(e)==='away').sort((a,b)=>a.minute-b.minute);
+  const contrib={};
+  ev.forEach(e=>{ if(e.scorer_id) contrib[e.scorer_id]=(contrib[e.scorer_id]||0)+2; if(e.assist_id) contrib[e.assist_id]=(contrib[e.assist_id]||0)+1; });
+  let mvpId=null, best=0; for(const k in contrib){ if(contrib[k]>best){ best=contrib[k]; mvpId=k; } }
+  const mvpName = mvpId && pmap[mvpId] ? pmap[mvpId].name : null;
+
+  ov.innerHTML=`<div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+          <div style="flex:1;text-align:right;min-width:0"><span class="nm">${esc(homeLabel)}</span> ${flag(homeCode,18)}</div>
+          <div class="num" style="font-size:26px;font-family:'Space Mono',monospace">${m.home_score} – ${m.away_score}</div>
+          <div style="flex:1;text-align:left;min-width:0">${flag(awayCode,18)} <span class="nm">${esc(awayLabel)}</span></div>
+        </div>
+        <div style="text-align:center;margin-top:4px"><span style="color:var(--muted);font-size:12px">Terminé</span></div>
+        ${mvpName?`<div style="text-align:center;margin-top:4px;font-size:12px;color:var(--orange)">⭐ Homme du match : <b>${esc(mvpName)}</b></div>`:''}
+      </div>
+      <button class="logout" id="closeMatch">Fermer</button>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:16px">
+      <div style="flex:1">${evHome.map(evLine).join('')||'<div style="color:var(--muted);font-size:13px">—</div>'}</div>
+      <div style="width:1px;background:var(--line)"></div>
+      <div style="flex:1;text-align:right">${evAway.map(evLine).join('')||'<div style="color:var(--muted);font-size:13px">—</div>'}</div>
+    </div></div>`;
+  $("closeMatch").addEventListener("click", ()=>ov.remove());
+}
+
+async function fetchScorers(filter){
+  let q=supa.from("match_events").select("scorer_id,assist_id");
+  if(filter.championship_id) q=q.eq("championship_id", filter.championship_id);
+  if(filter.competition_id)  q=q.eq("competition_id", filter.competition_id);
+  const { data } = await q.limit(5000);
+  const ev=data||[]; const sc={}, as={};
+  ev.forEach(e=>{ if(e.scorer_id) sc[e.scorer_id]=(sc[e.scorer_id]||0)+1; if(e.assist_id) as[e.assist_id]=(as[e.assist_id]||0)+1; });
+  const topS=Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topA=Object.entries(as).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const ids=[...new Set([...topS,...topA].map(x=>x[0]))];
+  const pmap={}; if(ids.length){ const {data:pl}=await supa.from("players").select("id,name,nationality").in("id",ids); (pl||[]).forEach(p=>pmap[p.id]=p); }
+  return { topS, topA, pmap };
+}
+async function renderScorers(host, filter){
+  host.innerHTML='<div class="loading">Chargement…</div>';
+  const { topS, topA, pmap } = await fetchScorers(filter);
+  if(!topS.length){ host.innerHTML='<div class="empty" style="padding:14px 0">Aucun but enregistré pour l\'instant.</div>'; return; }
+  const list=(arr,label)=>{
+    let h=`<div style="font-weight:600;margin:8px 0 6px">${label}</div>`;
+    arr.forEach(([id,n],i)=>{ const p=pmap[id];
+      h+=`<div class="player" style="padding:8px 0"><span class="num" style="width:22px;color:var(--muted)">${i+1}</span>
+        <span class="pname">${p?flag(p.nationality,13)+' '+esc(p.name):'—'}</span><span class="rating">${n}</span></div>`; });
+    return h;
+  };
+  host.innerHTML = list(topS,'Meilleurs buteurs') + (topA.length?list(topA,'Meilleurs passeurs'):'');
+}
+
+function pseudoToEmail(p){ return p.toLowerCase().replace(/[^a-z0-9_]/g,"")+"@"+EMAIL_DOMAIN; }
+
+async function handleAuth(){
+  const pseudo=$("pseudo").value.trim(), pass=$("password").value;
+  clearMsg($("authMsg"));
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(pseudo)) return msg($("authMsg"),"Pseudo : 3 à 20 caractères (lettres, chiffres, _).","error");
+  if(pass.length<6) return msg($("authMsg"),"Mot de passe : 6 caractères minimum.","error");
+  $("authBtn").disabled=true;
+  const email=pseudoToEmail(pseudo);
+  try{
+    if(isSignup){
+      const { data, error } = await supa.auth.signUp({ email, password:pass, options:{ data:{ pseudo } } });
+      if(error) throw error;
+      if(!data.session){ msg($("authMsg"),"Désactive « Confirm email » dans Supabase, puis réessaie.","error"); $("authBtn").disabled=false; return; }
+    } else {
+      const { error } = await supa.auth.signInWithPassword({ email, password:pass });
+      if(error) throw error;
+    }
+    await afterLogin();
+  }catch(err){
+    let m=err.message||"Erreur";
+    if(/already registered/i.test(m)) m="Ce pseudo est déjà pris.";
+    if(/invalid login/i.test(m)) m="Pseudo ou mot de passe incorrect.";
+    msg($("authMsg"),m,"error"); $("authBtn").disabled=false;
+  }
+}
+
+async function afterLogin(){
+  const { data:{ user } } = await supa.auth.getUser();
+  myUserId=user.id; myPseudo=user?.user_metadata?.pseudo||"manager";
+  $("userPseudo").textContent="@"+myPseudo;
+  try{ await supa.rpc("advance_season"); }catch(e){ /* passage de saison best-effort */ }
+  try{ await supa.rpc("tick_game"); }catch(e){ /* rattrapage best-effort */ }
+  if(Math.random()<0.5){ try{ await supa.rpc("bots_transfer",{ p_n:2 }); }catch(e){} }
+  try{ await supa.rpc("friendly_tick"); }catch(e){}
+  try{
+    const { data:gs } = await supa.from("game_state").select("*").eq("id",1).single();
+    if(gs){ gameSeason=gs.current_season; gameYear=gs.current_year; gameSeasonStart=new Date(gs.season_started_at); }
+  }catch(e){}
+  if(!clockTimer){ updateClock(); clockTimer=setInterval(updateClock,1000); }
+  updateChatBadge();
+  if(!chatBadgeTimer) chatBadgeTimer=setInterval(updateChatBadge, 30000);
+  try{ await supa.rpc("ping_presence"); }catch(e){}
+  if(!presenceTimer) presenceTimer=setInterval(()=>{ try{ supa.rpc("ping_presence"); }catch(e){} }, 60000);
+  await refreshMyTeam();
+  if(myTeam){ show("gameScreen"); switchTab("team"); } else { $("cancelCreate").classList.add("hidden"); show("createScreen"); }
+}
+
+async function refreshMyTeam(){
+  const { data } = await supa.from("teams").select("*").eq("user_id", myUserId);
+  myTeams = data || [];
+  if(!myTeams.length){ myTeam=null; renderClubSelect(); return; }
+  if(!activeTeamId || !myTeams.find(t=>t.id===activeTeamId)) activeTeamId = myTeams[0].id;
+  myTeam = myTeams.find(t=>t.id===activeTeamId);
+  myChampId = myTeam.championship_id;
+  $("budgetVal").textContent = fmtMoney(myTeam.budget);
+  renderClubSelect();
+}
+function renderClubSelect(){
+  const sel=$("clubSelect"); if(!sel) return;
+  sel.innerHTML="";
+  myTeams.forEach(t=>{ const o=document.createElement("option"); o.value=t.id; o.textContent=t.name; if(t.id===activeTeamId) o.selected=true; sel.appendChild(o); });
+  if(myTeams.length<5){ const o=document.createElement("option"); o.value="__new__"; o.textContent="＋ Nouveau club"; sel.appendChild(o); }
+  sel.style.display = myTeams.length ? "" : "none";
+}
+function setActiveTeam(id){
+  activeTeamId=id;
+  const t=myTeams.find(x=>x.id===id);
+  if(t){ myTeam=t; myChampId=t.championship_id; $("budgetVal").textContent=fmtMoney(t.budget); }
+  switchTab(currentTab||"team");
+}
+function newClub(){
+  if(myTeams.length>=5){ alert("Maximum 5 clubs par compte."); renderClubSelect(); return; }
+  $("teamName").value=""; clearMsg($("createMsg")); $("createBtn").disabled=false;
+  $("cancelCreate").classList.remove("hidden");
+  show("createScreen");
+}
+
+async function handleCreateTeam(){
+  const name=$("teamName").value.trim(), sel=$("countrySelect"), code=sel.value, cname=sel.options[sel.selectedIndex].dataset.name;
+  clearMsg($("createMsg"));
+  if(name.length<2) return msg($("createMsg"),"Donne un nom à ton équipe.","error");
+  $("createBtn").disabled=true; msg($("createMsg"),"Création en cours…","info");
+  try{
+    const { data, error } = await supa.rpc("register_team",{ p_name:name, p_country_code:code, p_country_name:cname });
+    if(error) throw error;
+    if(data) activeTeamId=data;
+    $("cancelCreate").classList.add("hidden");
+    await afterLogin();
+  }catch(err){ msg($("createMsg"),err.message||"Erreur.","error"); $("createBtn").disabled=false; }
+}
+
+/* ---------- Navigation ---------- */
+function stopTimers(){
+  if(chatChannel){ supa.removeChannel(chatChannel); chatChannel=null; }
+  if(chatPollTimer){ clearInterval(chatPollTimer); chatPollTimer=null; }
+  if(auctionTimer){ clearInterval(auctionTimer); auctionTimer=null; }
+  if(selectionTimer){ clearInterval(selectionTimer); selectionTimer=null; }
+  if(selRefreshTimer){ clearInterval(selRefreshTimer); selRefreshTimer=null; }
+}
+const MAIN_TABS=["team","league","agenda","selection","monde","hall","players","bdor","market","chat"];
+let subTeam="squad", subMarket="mercato", subMonde="leagues";
+function switchTab(tab){
+  currentTab=tab; stopTimers();
+  $("nav").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+  MAIN_TABS.forEach(t=>$("tab-"+t).classList.toggle("hidden", t!==tab));
+  if(tab==="team") showSub("team", subTeam);
+  else if(tab==="market") showSub("market", subMarket);
+  else if(tab==="monde") showSub("monde", subMonde);
+  else ({league:renderLeague,agenda:renderAgenda,
+    selection:renderSelection,hall:renderHall,players:renderPlayers,bdor:renderBallonDor,chat:renderChat}[tab])();
+}
+function showSub(group, which){
+  stopTimers();
+  if(group==="team"){
+    subTeam=which;
+    document.querySelectorAll('#tab-team .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='team:'+which));
+    $("tab-squad").classList.toggle("hidden", which!=="squad");
+    $("tab-calendar").classList.toggle("hidden", which!=="calendar");
+    if(which==="squad") renderSquad(); else renderCalendar();
+  } else if(group==="monde"){
+    subMonde=which;
+    document.querySelectorAll('#tab-monde .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='monde:'+which));
+    ["leagues","cl","coupes","gazette"].forEach(s=>$("tab-"+s).classList.toggle("hidden", s!==which));
+    ({leagues:renderLeaguesList, cl:renderCL, coupes:renderMondeCups, gazette:renderGazette}[which])();
+  } else {
+    subMarket=which;
+    document.querySelectorAll('#tab-market .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='market:'+which));
+    $("tab-mercato").classList.toggle("hidden", which!=="mercato");
+    $("tab-auctions").classList.toggle("hidden", which!=="auctions");
+    if(which==="mercato") renderMercato(); else renderAuctions();
+  }
+}
+
+/* ---------- Mon équipe ---------- */
+async function renderSquad(){
+  const el=$("tab-squad"); el.innerHTML='<div class="loading">Chargement…</div>';
+  await refreshMyTeam();
+  const { data:players } = await supa.from("players").select("*").eq("team_id", myTeam.id);
+  const posOrder={Gardien:0,Fixo:1,Ailier:2,Pivot:3,Universel:4};
+  squadList=(players||[]).slice().sort((a,b)=>(posOrder[a.position]-posOrder[b.position])||(b.rating-a.rating));
+  const avg=squadList.length?Math.round(squadList.reduce((s,p)=>s+p.rating,0)/squadList.length):0;
+  squadStarters=new Set(squadList.filter(p=>p.is_starter).map(p=>p.id));
+  if(squadStarters.size!==5){
+    squadStarters=new Set(squadList.slice().sort((a,b)=>b.rating-a.rating).slice(0,5).map(p=>p.id));
+  }
+  el.innerHTML=`<div class="card"><div class="team-hero">${flag(myTeam.country_code,46)}
+      <div><h2>${esc(myTeam.name)}</h2><div class="meta">${esc(myTeam.country_name)}</div>
+      <span class="pill">Note moy. ${avg}</span><span class="pill">${squadList.length} joueurs</span></div></div></div>
+    ${tacticCardHtml()}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px">
+        <h3 style="font-size:18px">Composition <span id="starterCount" style="color:var(--muted);font-size:14px"></span></h3>
+        <button id="saveLineup" class="btn btn-small">Enregistrer</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Choisis tes 5 titulaires : ils déterminent la force de ton équipe en match.</p>
+      <div id="squadRows"></div>
+    </div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:4px">Entraînement</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">+5 max / −3 max par séance selon l'âge (les jeunes progressent mieux). Cooldown de 12 h par joueur.</p>
+      <div id="trainRows"></div></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:4px">Repérage de talent</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Une fois par jour : déniche un jeune joueur (qualité variable) ajouté à ton effectif.</p>
+      <button id="scoutBtn" class="btn btn-orange btn-small">Repérer un talent</button>
+      <div id="scoutMsg" class="msg"></div></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:4px">🎁 Bonus quotidien</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Récupère 100 000 € une fois par jour pour ton club actif.</p>
+      <button id="dailyBtn" class="btn btn-small">Récupérer le bonus</button>
+      <div id="dailyMsg" class="msg"></div></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:8px">⚖️ Comparateur</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="cmpA" style="flex:1;min-width:120px"></select>
+        <select id="cmpB" style="flex:1;min-width:120px"></select>
+      </div>
+      <div id="cmpOut"></div></div>`;
+  renderSquadRows();
+  renderTrainRows();
+  wireScout();
+  if($("dailyBtn")) $("dailyBtn").addEventListener("click", async()=>{
+    $("dailyBtn").disabled=true;
+    const { data, error } = await supa.rpc("daily_reward",{ p_team:myTeam.id });
+    if(error){ msg($("dailyMsg"), error.message, "error"); $("dailyBtn").disabled=false; return; }
+    if(data && data>0){ msg($("dailyMsg"), "🎁 +"+fmtMoney(data)+" !", "info"); await refreshMyTeam(); $("dailyBtn").textContent="Récupéré ✓"; }
+    else { msg($("dailyMsg"), "Déjà récupéré aujourd'hui. Reviens demain !", "error"); }
+  });
+  wireComparator();
+  $("saveLineup").addEventListener("click", saveLineup);
+  if($("tacticSel")) $("tacticSel").addEventListener("change", ()=>{
+    const b=tacticBeats(+$("tacticSel").value);
+    $("tacticHint").textContent=`Avantage contre : ${b[0]} et ${b[1]}.`;
+  });
+  if($("saveTactic")) $("saveTactic").addEventListener("click", async()=>{
+    const v=+$("tacticSel").value, btn=$("saveTactic"); btn.disabled=true; btn.textContent="…";
+    const { error } = await supa.rpc("set_tactic",{ p_team:myTeam.id, p_tactic:v });
+    btn.disabled=false;
+    if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
+    myTeam.tactic=v; btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveTactic")) btn.textContent="Enregistrer"; },1500);
+  });
+}
+function renderSquadRows(){
+  const host=$("squadRows"); if(!host) return;
+  let html="";
+  squadList.forEach(p=>{
+    const on=squadStarters.has(p.id), cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    html+=`<div class="player" style="${on?'':'opacity:.55'}">
+      <span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
+      <button class="btn btn-small lineup-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>
+    </div>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll(".lineup-toggle").forEach(b=>b.addEventListener("click", ()=>toggleStarter(b.dataset.id)));
+  const cnt=$("starterCount"); if(cnt) cnt.textContent=`(${squadStarters.size}/5)`;
+}
+function toggleStarter(id){
+  if(squadStarters.has(id)) squadStarters.delete(id);
+  else{ if(squadStarters.size>=5){ alert("5 titulaires maximum. Retire un joueur d'abord."); return; } squadStarters.add(id); }
+  renderSquadRows();
+}
+async function saveLineup(){
+  if(squadStarters.size!==5){ alert("Sélectionne exactement 5 titulaires."); return; }
+  const btn=$("saveLineup"); btn.disabled=true; btn.textContent="…";
+  const { error } = await supa.rpc("set_lineup",{ p_team:myTeam.id, p_ids:[...squadStarters] });
+  btn.disabled=false;
+  if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
+  btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveLineup")) btn.textContent="Enregistrer"; },1500);
+}
+function wireComparator(){
+  const a=$("cmpA"), b=$("cmpB"), out=$("cmpOut");
+  if(!a||!b||!squadList.length) return;
+  const opts=squadList.map(p=>`<option value="${p.id}">${esc(p.name)} (${p.rating})</option>`).join("");
+  a.innerHTML=opts; b.innerHTML=opts;
+  if(squadList[1]) b.value=squadList[1].id;
+  const stat=(l,va,vb,hi)=>{ const better=hi?(va>vb?'a':va<vb?'b':''):(va<vb?'a':va>vb?'b':'');
+    return `<tr><td style="text-align:right;color:${better==='a'?'var(--green)':'inherit'};font-weight:${better==='a'?600:400}">${va}</td>
+      <td style="text-align:center;color:var(--muted);font-size:12px;padding:0 10px">${l}</td>
+      <td style="text-align:left;color:${better==='b'?'var(--green)':'inherit'};font-weight:${better==='b'?600:400}">${vb}</td></tr>`; };
+  const draw=()=>{
+    const pa=squadList.find(p=>p.id===a.value), pb=squadList.find(p=>p.id===b.value);
+    if(!pa||!pb){ out.innerHTML=''; return; }
+    out.innerHTML=`<table style="width:100%"><tbody>
+      <tr><td style="text-align:right"><b>${flag(pa.nationality,13)} ${esc(pa.name)}</b></td><td></td><td style="text-align:left"><b>${esc(pb.name)} ${flag(pb.nationality,13)}</b></td></tr>
+      ${stat('Note',pa.rating,pb.rating,true)}
+      ${stat('Âge',pa.age,pb.age,false)}
+      ${stat('Poste',pa.position,pb.position,false)}
+      ${stat('Salaire',fmtMoney(pa.salary||0),fmtMoney(pb.salary||0),false)}
+      ${stat('Contrat',('S'+(pa.contract_until||'?')),('S'+(pb.contract_until||'?')),false)}
+    </tbody></table>`;
+  };
+  a.addEventListener("change", draw); b.addEventListener("change", draw); draw();
+}
+function renderTrainRows(){
+  const host=$("trainRows"); if(!host) return;
+  let html="";
+  squadList.forEach(p=>{
+    const cd = p.training_until && new Date(p.training_until)>new Date();
+    const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    let cdTxt="Entraîner";
+    if(cd){ const diff=Math.max(0,Math.round((new Date(p.training_until)-new Date())/3600000)); cdTxt=`~${diff} h`; }
+    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
+      <button class="btn btn-small train-btn" data-id="${p.id}" ${cd?'disabled':''} style="margin-left:10px;${cd?'background:var(--panel-2);color:var(--muted)':''}">${cdTxt}</button></div>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll(".train-btn").forEach(b=>b.addEventListener("click", ()=>trainPlayer(b.dataset.id, b)));
+}
+async function trainPlayer(id, btn){
+  btn.disabled=true; btn.textContent="…";
+  const { data, error } = await supa.rpc("train_player",{ p_player_id:id });
+  if(error){ alert(error.message); btn.disabled=false; btn.textContent="Entraîner"; return; }
+  const d=parseInt(data,10);
+  alert("Entraînement terminé : "+(d>=0?"+":"")+d+" point"+(Math.abs(d)>1?"s":""));
+  renderSquad();
+}
+function wireScout(){
+  const btn=$("scoutBtn"); if(!btn) return;
+  const recent = myTeam && myTeam.last_scout_at && (new Date()-new Date(myTeam.last_scout_at) < 24*3600000);
+  if(recent){ btn.disabled=true; btn.textContent="Déjà repéré aujourd'hui"; }
+  btn.addEventListener("click", async()=>{
+    btn.disabled=true; btn.textContent="Repérage…";
+    const { data, error } = await supa.rpc("scout_talent",{ p_team:myTeam.id });
+    if(error){ msg($("scoutMsg"), error.message, "error"); btn.disabled=false; btn.textContent="Repérer un talent"; return; }
+    msg($("scoutMsg"), "Jeune talent recruté ! Note : "+parseInt(data,10), "info");
+    setTimeout(renderSquad, 900);
+  });
+}
+
+/* ---------- Classement util ---------- */
+function computeTable(teams, matches){
+  const t={}; teams.forEach(x=>t[x.id]={team:x,pj:0,g:0,n:0,p:0,bp:0,bc:0,pts:0,form:[]});
+  const sorted=matches.slice().sort((a,b)=>(a.matchday||0)-(b.matchday||0));
+  sorted.forEach(m=>{
+    const h=t[m.home_team_id], a=t[m.away_team_id]; if(!h||!a) return;
+    h.pj++;a.pj++; h.bp+=m.home_score;h.bc+=m.away_score; a.bp+=m.away_score;a.bc+=m.home_score;
+    if(m.home_score>m.away_score){h.g++;h.pts+=3;a.p++;h.form.push('V');a.form.push('D');}
+    else if(m.home_score<m.away_score){a.g++;a.pts+=3;h.p++;a.form.push('V');h.form.push('D');}
+    else{h.n++;a.n++;h.pts++;a.pts++;h.form.push('N');a.form.push('N');}
+  });
+  Object.values(t).forEach(x=>{ x.form=x.form.slice(-5); });
+  return Object.values(t).sort((x,y)=>y.pts-x.pts||(y.bp-y.bc)-(x.bp-x.bc)||y.bp-x.bp);
+}
+function formHtml(form){
+  if(!form||!form.length) return '';
+  const col={V:'var(--green)',N:'#c9a227',D:'var(--danger)'};
+  return '<span style="display:inline-flex;gap:2px">'+form.map(r=>`<span title="${r}" style="width:14px;height:14px;border-radius:3px;background:${col[r]||'var(--line)'};color:#0d1a13;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${r}</span>`).join('')+'</span>';
+}
+function tableHtml(rows, myId){
+  let h=`<table><thead><tr><th class="rank"></th><th class="left">Équipe</th>
+    <th>J</th><th class="hide">G</th><th class="hide">N</th><th class="hide">P</th><th class="hide">Diff</th><th class="hide">Forme</th><th>Pts</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const me=myId&&r.team.id===myId, d=r.bp-r.bc;
+    let zone=""; if(rows.length>2){ if(i<2) zone="qualif"; else if(i===rows.length-1) zone="releg"; }
+    h+=`<tr class="${me?'me ':''}${zone}"><td class="num rank">${i+1}</td>
+      <td class="left"><div class="tname team-link" data-team="${r.team.id}">${flag(r.team.country_code,16)}<span>${esc(r.team.name)}</span></div></td>
+      <td class="num">${r.pj}</td><td class="num hide">${r.g}</td><td class="num hide">${r.n}</td><td class="num hide">${r.p}</td>
+      <td class="num hide">${d>0?'+':''}${d}</td><td class="num hide">${formHtml(r.form)}</td><td class="num"><strong>${r.pts}</strong></td></tr>`;
+  });
+  h+=`</tbody></table>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+      <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;margin-right:5px;vertical-align:middle"></span>Qualifié Ligue des champions</span>
+      <span><span style="display:inline-block;width:9px;height:9px;background:var(--danger);border-radius:2px;margin-right:5px;vertical-align:middle"></span>Relégation</span></div>`;
+  return h;
+}
+
+/* ---------- Championnat ---------- */
+async function renderLeague(){
+  const el=$("tab-league"); el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:teams } = await supa.from("teams").select("*").eq("championship_id", myChampId);
+  const { data:played } = await supa.from("matches").select("*").eq("championship_id", myChampId).eq("played", true);
+  const rows=computeTable(teams||[], played||[]);
+  const { data:rem } = await supa.from("matches").select("id").eq("championship_id", myChampId).eq("played", false).limit(1);
+  const over=!rem||rem.length===0;
+  let html=`<div class="card"><h3 style="font-size:18px;margin-bottom:12px">Classement</h3>${tableHtml(rows, myTeam.id)}`;
+  const myPos=rows.findIndex(r=>r.team.id===myTeam.id)+1;
+  if(myTeam.objective_rank){
+    const ok=myPos>0 && myPos<=myTeam.objective_rank;
+    html+=`<div style="margin-top:12px;font-size:13px">🎯 Objectif du board : <b>finir dans le top ${myTeam.objective_rank}</b> — position actuelle : <span style="color:${ok?'var(--green)':'var(--muted)'}">${myPos||'—'}ᵉ</span> ${ok?'✓':''} <span style="color:var(--muted)">(bonus 2 M€ si atteint en fin de saison)</span></div>`;
+  }
+  if(over) html+=`<p style="color:var(--green);margin-top:14px;font-size:14px">🏆 Saison terminée. ${esc(rows[0].team.name)} est champion !</p>`;
+  else html+=`<p style="color:var(--muted);margin-top:14px;font-size:13px">Les matchs se jouent automatiquement aux dates prévues (voir Calendrier).</p>`;
+  el.innerHTML=html+`</div><div class="card"><h3 style="font-size:18px;margin-bottom:6px">Statistiques</h3><div id="lgScorers"></div></div>
+    <div id="natCupBox"></div>`;
+  renderScorers($("lgScorers"), { championship_id: myChampId });
+  renderNationalCup(myTeam.country_code);
+}
+async function renderNationalCup(country, boxId){
+  const host=$(boxId||"natCupBox"); if(!host) return;
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const r=await supa.from("competitions").select("*").eq("type","national_cup").eq("zone",country).eq("season",cs).limit(1);
+  const nc=(r.data&&r.data.length)?r.data[0]:null;
+  if(!nc){ host.innerHTML=''; return; }
+  const cmR=await supa.from("competition_matches").select("*").eq("competition_id", nc.id);
+  const cms=cmR.data||[];
+  const ids=[...new Set(cms.flatMap(m=>[m.home_team_id,m.away_team_id]).filter(Boolean))];
+  const tmap={}; if(ids.length){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",ids); (tt||[]).forEach(t=>tmap[t.id]=t); }
+  let html=`<div class="card"><h3 style="font-size:18px;margin-bottom:8px">Coupe nationale</h3>`;
+  if(nc.stage==='done' && nc.winner_team_id){ const w=tmap[nc.winner_team_id];
+    html+=`<div style="text-align:center;font-size:18px;margin-bottom:10px">🏆 ${w?flag(w.country_code,18)+' '+esc(w.name):'—'}</div>`; }
+  const rounds=[...new Set(cms.map(m=>m.round_idx))].sort((a,b)=>a-b).map(ri=>{
+    const rm=cms.filter(m=>m.round_idx===ri).sort((a,b)=>a.pair_idx-b.pair_idx);
+    return { label: rm[0].round_label, matches: rm.map(m=>({
+      home:{name:tmap[m.home_team_id]?.name||'?', flag:flag(tmap[m.home_team_id]?.country_code,13)},
+      away:{name:tmap[m.away_team_id]?.name||'?', flag:flag(tmap[m.away_team_id]?.country_code,13)},
+      hs:m.home_score, as:m.away_score, done:m.played, mid:m.id })) };
+  });
+  html += bracketHTML(rounds);
+  html += `<div style="margin-top:12px"><h4 style="font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:14px;color:var(--muted);margin-bottom:4px">Meilleurs buteurs</h4><div class="cup-scorers"></div></div>`;
+  host.innerHTML=html+`</div>`;
+  const scEl=host.querySelector(".cup-scorers"); if(scEl) renderScorers(scEl, { competition_id: nc.id });
+}
+function bracketHTML(rounds){
+  if(!rounds.length) return '<div class="empty" style="padding:8px 0">—</div>';
+  return `<div class="bkt-wrap">`+rounds.map(rd=>{
+    const cards=rd.matches.map(m=>{
+      const w1=m.done&&m.hs>m.as, w2=m.done&&m.as>m.hs;
+      const clk=m.done&&m.mid?`class="bkt-match match-link" data-match="${m.mid}" style="cursor:pointer"`:`class="bkt-match"`;
+      return `<div ${clk}>
+        <div class="bkt-side ${w1?'w':''}"><span class="bkt-nm">${m.home.flag} ${esc(m.home.name)}</span><b>${m.done?m.hs:'·'}</b></div>
+        <div class="bkt-side ${w2?'w':''}"><span class="bkt-nm">${m.away.flag} ${esc(m.away.name)}</span><b>${m.done?m.as:'·'}</b></div>
+      </div>`;
+    }).join('');
+    return `<div class="bkt-col"><div class="bkt-round">${esc(rd.label||'')}</div><div class="bkt-cards">${cards}</div></div>`;
+  }).join('')+`</div>`;
+}
+
+/* ---------- Calendrier ---------- */
+async function renderCalendarFor(champId, host){
+  host.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:teams } = await supa.from("teams").select("id,name,country_code").eq("championship_id", champId);
+  const { data:matches } = await supa.from("matches").select("*").eq("championship_id", champId).order("matchday");
+  const tmap={}; (teams||[]).forEach(t=>tmap[t.id]=t);
+  const days={}; (matches||[]).forEach(m=>{ (days[m.matchday]=days[m.matchday]||[]).push(m); });
+  let html="";
+  Object.keys(days).sort((a,b)=>a-b).forEach(md=>{
+    html+=`<div class="md-group"><div class="md-title">Journée ${md}</div>`;
+    days[md].forEach(m=>{
+      const h=tmap[m.home_team_id], a=tmap[m.away_team_id];
+      const meH=myTeam&&m.home_team_id===myTeam.id, meA=myTeam&&m.away_team_id===myTeam.id;
+      const score=m.played?`<span class="score match-link" data-match="${m.id}" style="cursor:pointer">${m.home_score} – ${m.away_score}</span>`:`<span class="score pending">VS</span>`;
+      html+=`<div class="match">
+        <span class="side ${meH?'me':''} team-link" data-team="${h?.id||''}">${flag(h?.country_code,15)}<span class="nm">${esc(h?.name||'?')}</span></span>
+        ${score}
+        <span class="side away ${meA?'me':''} team-link" data-team="${a?.id||''}"><span class="nm">${esc(a?.name||'?')}</span>${flag(a?.country_code,15)}</span></div>`;
+    });
+    html+=`</div>`;
+  });
+  host.innerHTML=html||'<div class="empty">Aucun match.</div>';
+}
+async function renderCalendar(){
+  const el=$("tab-calendar"); el.innerHTML='<div class="loading">Chargement…</div>';
+  if(!myTeam){ el.innerHTML='<div class="empty">Aucun club.</div>'; return; }
+  const gsR=await supa.from("game_state").select("*").eq("id",1).single();
+  const base=gsR.data?new Date(gsR.data.season_started_at):new Date();
+  const season=gsR.data?gsR.data.current_season:1;
+  const dOff=(n)=>{ const x=new Date(base); x.setDate(x.getDate()+(n-1)); return x; };
+  const fmt=d=>d.toLocaleString("fr-FR",{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+
+  const [lgR, cmpR] = await Promise.all([
+    supa.from("matches").select("*").eq("championship_id",myChampId).or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`),
+    supa.from("competition_matches").select("*").or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`)
+  ]);
+  const lg=lgR.data||[], cmp=(cmpR.data||[]).filter(m=>m.stage==='group'||m.stage==='ko');
+  const tids=new Set(); [...lg,...cmp].forEach(m=>{ tids.add(m.home_team_id); tids.add(m.away_team_id); });
+  const tmap={}; if(tids.size){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",[...tids]); (tt||[]).forEach(t=>tmap[t.id]=t); }
+  // force (moyenne du top 5) pour la difficulté
+  const strMap={};
+  { const {data:pl}=await supa.from("players").select("team_id,rating").in("team_id",[...tids, myTeam.id]);
+    const by={}; (pl||[]).forEach(p=>{ (by[p.team_id]=by[p.team_id]||[]).push(p.rating); });
+    Object.keys(by).forEach(k=>{ const t5=by[k].sort((a,b)=>b-a).slice(0,5); strMap[k]=t5.reduce((s,r)=>s+r,0)/(t5.length||1); }); }
+  const myStr=strMap[myTeam.id]||60;
+  const diffPill=(oppId)=>{ const os=strMap[oppId]; if(os==null) return '';
+    const d=os-myStr; const lab=d<-5?'Facile':d>5?'Difficile':'Moyen';
+    const col=d<-5?'var(--green)':d>5?'var(--danger)':'#c9a227';
+    return ` · <span style="color:${col}">${lab}</span>`; };
+
+  const {data:coach}=await supa.from("national_selections").select("country_code").eq("coach_user_id",myUserId).limit(1);
+  const nation=(coach&&coach.length)?coach[0].country_code:myTeam.country_code;
+  const compsR=await supa.from("national_competitions").select("*").eq("season",season);
+  const ncmap={}; (compsR.data||[]).forEach(c=>ncmap[c.id]=c);
+  const nmR=await supa.from("national_matches").select("*").or(`home_country.eq.${nation},away_country.eq.${nation}`);
+  const nm=(nmR.data||[]).filter(m=>ncmap[m.ncomp_id]);
+
+  const clubRow=(m,kind)=>{
+    const home=m.home_team_id===myTeam.id, oppId=home?m.away_team_id:m.home_team_id, opp=tmap[oppId];
+    const when=kind==='lg'?(m.scheduled_at?fmt(new Date(m.scheduled_at)):fmt(dOff(m.matchday))):((m.scheduled_at?fmt(new Date(m.scheduled_at))+' · ':'')+(m.round_label||'Coupe'));
+    const ord=kind==='lg'?(m.scheduled_at?new Date(m.scheduled_at).getTime():m.matchday):(m.scheduled_at?new Date(m.scheduled_at).getTime():(m.round_idx||9)+1e12);
+    const score=m.played?(home?`${m.home_score} – ${m.away_score}`:`${m.away_score} – ${m.home_score}`):'à venir';
+    const clickable=m.played;
+    return {played:m.played, order:ord,
+      html:`<div class="match ${clickable?'match-link':''}" ${clickable?`data-match="${m.id}" style="cursor:pointer"`:''}>
+        <span class="side">${flag(myTeam.country_code,15)}<span class="nm">${home?'(dom.)':'(ext.)'}</span></span>
+        <span class="score" style="${m.played?'':'color:var(--muted);font-size:12px'}">${score}</span>
+        <span class="side away team-link" data-team="${oppId}"><span class="nm">${esc(opp?opp.name:'?')}</span>${flag(opp?opp.country_code:null,15)}</span></div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin:-2px 0 8px">${esc(when)}${kind==='lg'?' · Championnat':''}${!m.played?diffPill(oppId):''}</div>`};
+  };
+  const natRow=(m)=>{
+    const home=m.home_country===nation, opp=home?m.away_country:m.home_country;
+    const cn=ncmap[m.ncomp_id]?ncmap[m.ncomp_id].name:'';
+    const score=m.played?(home?`${m.home_score} – ${m.away_score}`:`${m.away_score} – ${m.home_score}`):'à venir';
+    return {played:m.played,
+      html:`<div class="match"><span class="side">${flag(nation,15)}<span class="nm">${home?'(dom.)':'(ext.)'}</span></span>
+        <span class="score ${m.played?'match-link':''}" ${m.played?`data-match="${m.id}" style="cursor:pointer"`:'style="color:var(--muted);font-size:12px"'}>${score}</span>
+        <span class="side away"><span class="nm">${esc(countryName(opp))}</span>${flag(opp,15)}</span></div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin:-2px 0 8px">${esc(cn)}</div>`};
+  };
+
+  const clubAll=[...lg.map(m=>clubRow(m,'lg')), ...cmp.map(m=>clubRow(m,'cup'))];
+  const clubUp=clubAll.filter(r=>!r.played).sort((a,b)=>a.order-b.order);
+  const clubRes=clubAll.filter(r=>r.played).sort((a,b)=>b.order-a.order);
+  const natAll=nm.map(natRow);
+  const natUp=natAll.filter(r=>!r.played);
+  const natRes=natAll.filter(r=>r.played).slice(-8).reverse();
+
+  const block=(title,up,res)=>`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">${title}</h3>
+    <div style="font-weight:600;font-size:13px;color:var(--muted);margin-bottom:6px">À venir</div>
+    ${up.length?up.map(r=>r.html).join(''):'<div class="empty" style="padding:8px 0">Aucun match à venir (simule/lance une compétition).</div>'}
+    <div style="font-weight:600;font-size:13px;color:var(--muted);margin:10px 0 6px">Résultats</div>
+    ${res.length?res.map(r=>r.html).join(''):'<div class="empty" style="padding:8px 0">Aucun résultat.</div>'}</div>`;
+
+  el.innerHTML = block(`Mon club — ${esc(myTeam.name)}`, clubUp, clubRes) + block(`Ma nation — ${esc(countryName(nation))}`, natUp, natRes);
+}
+
+/* ---------- Ligues (parcourir) ---------- */
+async function renderLeaguesList(){
+  const el=$("tab-leagues"); el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:champs } = await supa.from("championships").select("*");
+  const { data:counts } = await supa.from("teams").select("championship_id");
+  const cc={}; (counts||[]).forEach(t=>{ if(t.championship_id) cc[t.championship_id]=(cc[t.championship_id]||0)+1; });
+  if(!champs||!champs.length){ el.innerHTML='<div class="empty">Aucune ligue.</div>'; return; }
+  const byZone={}; ZONES.forEach(z=>byZone[z]=[]); byZone["Autres"]=[];
+  champs.forEach(c=>{ const z=countryZone(c.country_code); (byZone[z]=byZone[z]||[]).push(c); });
+  let html="";
+  Object.keys(byZone).forEach(z=>{
+    const arr=byZone[z]; if(!arr.length) return;
+    arr.sort((a,b)=>countryName(a.country_code).localeCompare(countryName(b.country_code))||a.division-b.division);
+    html+=`<div class="card"><h3 style="font-size:16px;margin-bottom:8px">${esc(z)} <span style="color:var(--muted);font-size:13px">(${arr.length})</span></h3>`;
+    arr.forEach(c=>{
+      html+=`<div class="league-item" data-champ="${c.id}">${flag(c.country_code,22)}
+        <div><div class="lg-name">${esc(c.country_name)} — Division ${c.division}</div>
+        <div class="lg-sub">Saison ${c.season} · ${cc[c.id]||0} équipes</div></div><span class="arrow">→</span></div>`;
+    });
+    html+=`</div>`;
+  });
+  el.innerHTML=html;
+  el.querySelectorAll(".league-item").forEach(it=>it.addEventListener("click", ()=>openLeague(it.dataset.champ)));
+}
+
+/* ---------- Agenda (calendrier principal des compétitions) ---------- */
+async function renderAgenda(){
+  const el=$("tab-agenda"); el.innerHTML='<div class="loading">Chargement…</div>';
+  let gs=null;
+  try{ const r=await supa.from("game_state").select("*").eq("id",1).single(); gs=r.data; }catch(e){}
+  const season=gs?gs.current_season:1, year=gs?gs.current_year:2025;
+  const base=gs?new Date(gs.season_started_at):new Date();
+  const now=new Date();
+  const addDays=(d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+  const fmt=d=>d.toLocaleDateString("fr-FR",{day:'2-digit',month:'short'});
+  const items=[];
+  items.push({name:"Championnats nationaux", detail:"Toutes les ligues · 4 journées", s:addDays(base,0), e:addDays(base,3)});
+  items.push({name:"Coupes nationales", detail:"Élimination directe par pays", s:addDays(base,4), e:addDays(base,4)});
+  ZONES.forEach(z=>items.push({name:"Ligue des champions — "+z, detail:"Meilleures équipes de la zone", s:addDays(base,5), e:addDays(base,5)}));
+  items.push({name:"Super-Coupe mondiale", detail:"Vainqueurs des 7 Ligues des champions", s:addDays(base,6), e:addDays(base,6)});
+  if(season%3===0) items.push({name:"Coupe continentale", detail:"Tous les 3 saisons", s:addDays(base,7), e:addDays(base,7)});
+  if(season%6===0) items.push({name:"Coupe du monde", detail:"Toutes les 6 saisons", s:addDays(base,7), e:addDays(base,7)});
+  items.sort((a,b)=>a.s-b.s);
+  let html=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+      <h2 style="font-size:26px">Saison ${season}</h2><span class="pill">Année ${year}</span></div>
+      <p style="color:var(--muted);font-size:13px;margin-top:6px">Agenda des compétitions. Les compétitions continentales et la Super-Coupe seront jouables dans la prochaine mise à jour.</p></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:10px">Programme de la saison</h3>`;
+  items.forEach(it=>{
+    const status = now>it.e ? "Terminé" : (now>=it.s ? "En cours" : "À venir");
+    const col = status==="En cours"?"var(--orange)":status==="Terminé"?"var(--muted)":"var(--green)";
+    const dateStr = it.s.getTime()===it.e.getTime()?fmt(it.s):`${fmt(it.s)} – ${fmt(it.e)}`;
+    html+=`<div class="agenda-row"><div><div class="ag-name">${esc(it.name)}</div><div class="ag-detail">${esc(it.detail)}</div></div>
+      <div style="text-align:right"><div class="ag-date">${dateStr}</div><div class="ag-status" style="color:${col}">${status}</div></div></div>`;
+  });
+  el.innerHTML=html+`</div>`;
+}
+
+/* ---------- Sélections nationales ---------- */
+async function renderSelection(){
+  const el=$("tab-selection");
+  el.innerHTML=`<div class="card"><h3 style="font-size:18px;margin-bottom:4px">Sélections nationales</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Postule pour diriger une sélection. Un vote de 5 h s'ouvre : sans concurrent tu obtiens le poste, sinon le tirage est aléatoire. Mandat de 6 saisons.</p>
+    <label>Pays</label><select id="selCountry"></select>
+    <div id="selStatus" style="margin-top:14px"><div class="loading">Chargement…</div></div></div>`;
+  const sel=$("selCountry");
+  let defaultCode = myTeam?myTeam.country_code:(ALL_COUNTRIES[0]&&ALL_COUNTRIES[0].code);
+  const { data:coach } = await supa.from("national_selections").select("country_code").eq("coach_user_id",myUserId).limit(1);
+  if(coach && coach.length) defaultCode=coach[0].country_code;
+  ZONES.forEach(z=>{
+    const inZone=ALL_COUNTRIES.filter(c=>c.zone===z); if(!inZone.length) return;
+    const og=document.createElement("optgroup"); og.label=z;
+    inZone.forEach(co=>{ const o=document.createElement("option"); o.value=co.code; o.textContent=co.name;
+      if(co.code===defaultCode) o.selected=true; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  sel.addEventListener("change", loadSelection);
+  loadSelection();
+}
+async function loadSelection(){
+  if(selectionTimer){ clearInterval(selectionTimer); selectionTimer=null; }
+  const host=$("selStatus"); if(!host) return;
+  host.innerHTML='<div class="loading">Chargement…</div>';
+  const code=$("selCountry").value;
+  await supa.rpc("finalize_due_selection_votes");
+  const [selR, voteR, gsR] = await Promise.all([
+    supa.from("national_selections").select("*").eq("country_code", code),
+    supa.from("selection_votes").select("*").eq("country_code", code).eq("finalized", false).gt("ends_at", new Date().toISOString()).order("ends_at").limit(1),
+    supa.from("game_state").select("*").eq("id",1).single()
+  ]);
+  const cs=gsR.data?gsR.data.current_season:1;
+  const sel=(selR.data&&selR.data.length)?selR.data[0]:null;
+  const vote=(voteR.data&&voteR.data.length)?voteR.data[0]:null;
+  let cands=[];
+  if(vote){ const c=await supa.from("selection_candidates").select("*").eq("vote_id", vote.id); cands=c.data||[]; }
+  const held = sel && sel.coach_user_id && sel.mandate_end>=cs;
+
+  let html="";
+  if(held){
+    html+=`<div class="card" style="margin:0 0 12px"><div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sélectionneur en poste</div>
+      <div style="font-weight:600;font-size:16px;margin-top:4px">${esc(sel.coach_pseudo)}${sel.coach_user_id===myUserId?' (toi)':''}</div>
+      <div style="color:var(--muted);font-size:13px">Mandat : saisons ${sel.mandate_start} à ${sel.mandate_end}</div></div>`;
+  } else {
+    html+=`<div class="card" style="margin:0 0 12px"><div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Poste</div>
+      <div style="font-weight:600;font-size:16px;margin-top:4px;color:var(--green)">Vacant</div></div>`;
+  }
+  if(vote){
+    const iAmCand=cands.some(c=>c.user_id===myUserId);
+    html+=`<div class="card" style="margin:0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="font-weight:600">Vote en cours</div><div class="countdown" id="selCd" data-end="${vote.ends_at}">…</div></div>
+      <div style="color:var(--muted);font-size:13px;margin:8px 0">Candidats (${cands.length}) : ${cands.map(c=>esc(c.pseudo)).join(", ")||"—"}</div>`;
+    if(held) html+=`<p style="color:var(--muted);font-size:13px">Poste occupé, candidature impossible.</p>`;
+    else if(iAmCand) html+=`<p style="color:var(--green);font-size:13px">Tu es candidat. Résultat à la fin du compte à rebours.</p>`;
+    else html+=`<button id="applyBtn" class="btn btn-orange btn-small">Postuler</button>`;
+    html+=`</div>`;
+  } else if(!held){
+    html+=`<button id="applyBtn" class="btn btn-orange btn-small">Postuler pour ce poste</button>`;
+  }
+  host.innerHTML=html;
+  if($("applyBtn")) $("applyBtn").addEventListener("click", ()=>applySelection(code));
+  const info=document.createElement("div"); info.id="ntInfo"; info.style.marginTop="12px"; host.appendChild(info);
+  renderNTInfo(code, held && sel && sel.coach_user_id===myUserId);
+  const isCoach = held && sel && sel.coach_user_id===myUserId;
+  const tac=document.createElement("div"); tac.id="natTacWrap"; tac.style.marginTop="12px"; host.appendChild(tac);
+  renderNationalTactic(code, sel?sel.tactic:2, isCoach);
+  const fx=document.createElement("div"); fx.id="fixWrap"; fx.style.marginTop="12px"; host.appendChild(fx);
+  renderNationalFixtures(code);
+  if($("selCd")){
+    const upd=()=>{
+      const cd=$("selCd"); if(!cd) return;
+      const diff=Math.floor((new Date(cd.dataset.end)-new Date())/1000);
+      if(diff<=0){ clearInterval(selectionTimer); selectionTimer=null; supa.rpc("finalize_due_selection_votes").then(loadSelection); return; }
+      const h=Math.floor(diff/3600), m=Math.floor((diff%3600)/60), s=diff%60;
+      cd.textContent=`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+    upd(); selectionTimer=setInterval(upd,1000);
+  }
+}
+async function applySelection(code){
+  const btn=$("applyBtn"); if(btn){ btn.disabled=true; btn.textContent="…"; }
+  const { error } = await supa.rpc("apply_for_selection",{ p_country_code:code });
+  if(error){ alert(error.message); if(btn){ btn.disabled=false; btn.textContent="Postuler"; } return; }
+  loadSelection();
+}
+
+let natStarters=new Set(), natList=[], natCountry=null;
+async function renderNTInfo(code, isCoach){
+  natCountry=code;
+  const wrap=$("ntInfo"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement des joueurs…</div></div>';
+  const [plR, lnR] = await Promise.all([
+    supa.from("players").select("*").eq("nationality", code).order("rating",{ascending:false}).limit(30),
+    supa.from("national_lineups").select("*").eq("country_code", code)
+  ]);
+  natList=plR.data||[];
+  const saved=(lnR.data&&lnR.data.length)?(lnR.data[0].player_ids||[]):[];
+  natStarters=new Set(saved.filter(id=>natList.some(p=>p.id===id)));
+  if(isCoach && natStarters.size!==5) natStarters=new Set(natList.slice(0,5).map(p=>p.id));
+  const five=(saved.length===5)?natList.filter(p=>saved.includes(p.id)):natList.slice(0,5);
+  const strength=five.reduce((s,p)=>s+(p.rating||0),0);
+  let html=`<div class="card" style="margin:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+      <h3 style="font-size:17px">Sélection ${isCoach?'<span id="natCount" style="color:var(--muted);font-size:14px"></span>':''}</h3>
+      ${isCoach?'<button id="saveNat" class="btn btn-small">Enregistrer</button>':`<span class="pill">Force ${strength}</span>`}
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">${isCoach?`Force : ${strength}. Choisis tes 5 titulaires parmi les 30 meilleurs.`:'Meilleurs joueurs de nationalité.'}</p>
+    <div id="natRows"></div></div>`;
+  wrap.innerHTML=html;
+  renderNatRows(isCoach);
+  if(isCoach && $("saveNat")) $("saveNat").addEventListener("click", ()=>saveNationalLineup(code));
+}
+function renderNatRows(isCoach){
+  const host=$("natRows"); if(!host) return;
+  const list=isCoach?natList:natList.slice(0,15);
+  let html="";
+  list.forEach(p=>{
+    const on=natStarters.has(p.id), cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    html+=`<div class="player" style="${isCoach&&!on?'opacity:.55':''}">
+      <span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
+      ${isCoach?`<button class="btn btn-small nat-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>`:''}</div>`;
+  });
+  host.innerHTML=html;
+  if(isCoach){
+    host.querySelectorAll(".nat-toggle").forEach(b=>b.addEventListener("click", ()=>{
+      const id=b.dataset.id;
+      if(natStarters.has(id)) natStarters.delete(id);
+      else{ if(natStarters.size>=5){ alert("5 titulaires maximum."); return; } natStarters.add(id); }
+      renderNatRows(true);
+    }));
+    const cnt=$("natCount"); if(cnt) cnt.textContent=`(${natStarters.size}/5)`;
+  }
+}
+async function renderNationalTactic(code, tactic, isCoach){
+  const wrap=$("natTacWrap"); if(!wrap) return;
+  const cur=(tactic!=null)?tactic:2;
+  if(!isCoach){
+    wrap.innerHTML=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:4px">Tactique</h3>
+      <p style="color:var(--muted);font-size:12px">🔒 Définie par le sélectionneur (masquée aux adversaires).${(''===''&&!code)?'':''}</p></div>`;
+    return;
+  }
+  const opts=TACTICS.map((n,i)=>`<option value="${i}" ${i===cur?'selected':''}>${n}</option>`).join("");
+  const b=tacticBeats(cur);
+  wrap.innerHTML=`<div class="card" style="margin:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+      <h3 style="font-size:17px">Tactique de la sélection</h3><button id="saveNatTac" class="btn btn-small">Enregistrer</button></div>
+    <select id="natTacSel">${opts}</select>
+    <p id="natTacHint" style="color:var(--muted);font-size:12px;margin-top:8px">Avantage contre : ${b[0]} et ${b[1]}.</p></div>`;
+  $("natTacSel").addEventListener("change", ()=>{
+    const bb=tacticBeats(+$("natTacSel").value);
+    $("natTacHint").textContent=`Avantage contre : ${bb[0]} et ${bb[1]}.`;
+  });
+  $("saveNatTac").addEventListener("click", async()=>{
+    const v=+$("natTacSel").value, btn=$("saveNatTac"); btn.disabled=true; btn.textContent="…";
+    const { error } = await supa.rpc("set_national_tactic",{ p_country:code, p_tactic:v });
+    if(error){ alert(error.message); btn.disabled=false; btn.textContent="Enregistrer"; return; }
+    btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveNatTac")) btn.textContent="Enregistrer"; btn.disabled=false; },1500);
+  });
+}
+async function renderNationalFixtures(code){
+  const wrap=$("fixWrap"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement…</div></div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const compsR=await supa.from("national_competitions").select("*").eq("season",cs);
+  const cmap={}; (compsR.data||[]).forEach(c=>cmap[c.id]=c);
+  const mR=await supa.from("national_matches").select("*").or(`home_country.eq.${code},away_country.eq.${code}`);
+  const list=(mR.data||[]).filter(m=>cmap[m.ncomp_id]);
+  const upcoming=list.filter(m=>!m.played);
+  const results=list.filter(m=>m.played).slice(-8).reverse();
+  const fmtT=d=>new Date(d).toLocaleString("fr-FR",{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const row=m=>{
+    const opp = m.home_country===code ? m.away_country : m.home_country;
+    const home = m.home_country===code;
+    let cn = cmap[m.ncomp_id]?cmap[m.ncomp_id].name:'';
+    if(m.scheduled_at && !m.played) cn += ' · '+fmtT(m.scheduled_at);
+    const score = m.played ? (home?`${m.home_score} – ${m.away_score}`:`${m.away_score} – ${m.home_score}`) : 'à venir';
+    return `<div class="match"><span class="side">${flag(code,15)}<span class="nm">${home?'(dom.)':'(ext.)'}</span></span>
+      <span class="score ${m.played?'match-link':''}" ${m.played?`data-match="${m.id}" style="cursor:pointer"`:'style="color:var(--muted);font-size:12px"'}>${score}</span>
+      <span class="side away"><span class="nm">${esc(countryName(opp))}</span>${flag(opp,15)}</span></div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin:-2px 0 8px">${esc(cn)}</div>`;
+  };
+  let html=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:8px">Prochains matchs & résultats</h3>`;
+  html+=`<div style="font-weight:600;font-size:13px;color:var(--muted);margin-bottom:6px">À venir</div>`;
+  html+= upcoming.length ? upcoming.slice(0,10).map(row).join('') : '<div class="empty" style="padding:8px 0">Aucun match à venir.</div>';
+  html+=`<div style="font-weight:600;font-size:13px;color:var(--muted);margin:10px 0 6px">Derniers résultats</div>`;
+  html+= results.length ? results.map(row).join('') : '<div class="empty" style="padding:8px 0">Aucun résultat.</div>';
+  wrap.innerHTML=html+`</div>`;
+}
+async function renderQualif(zone, code){
+  const wrap=$("qualifWrap"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement des qualifications…</div></div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const ncR=await supa.from("national_competitions").select("*").eq("type","continental_qualif").eq("zone",zone).eq("season",cs).limit(1);
+  const nc=(ncR.data&&ncR.data.length)?ncR.data[0]:null;
+  if(!nc){
+    wrap.innerHTML=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:6px">Qualifications continentales — ${esc(zone)}</h3>
+      <p style="color:var(--muted);font-size:12px">Elles se dérouleront automatiquement selon le calendrier (avant la Coupe continentale de la saison 3).</p></div>`;
+    return;
+  }
+  const nmR=await supa.from("national_matches").select("*").eq("ncomp_id", nc.id);
+  const nm=nmR.data||[];
+  const t={};
+  nm.forEach(m=>{
+    [m.home_country,m.away_country].forEach(c=>{ if(!t[c]) t[c]={code:c,pj:0,pts:0,bp:0,bc:0}; });
+    if(!m.played) return; const h=t[m.home_country],a=t[m.away_country];
+    h.pj++;a.pj++;h.bp+=m.home_score;h.bc+=m.away_score;a.bp+=m.away_score;a.bc+=m.home_score;
+    if(m.home_score>m.away_score) h.pts+=3; else if(m.home_score<m.away_score) a.pts+=3; else {h.pts++;a.pts++;}
+  });
+  const rows=Object.values(t).sort((x,y)=>y.pts-x.pts||(y.bp-y.bc)-(x.bp-x.bc));
+  const qN = rows.length>=32?32 : rows.length>=16?16 : rows.length>=8?8 : rows.length>=4?4 : rows.length;
+  let html=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:8px">Qualifications continentales — ${esc(zone)}</h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px">Les ${qN} premières nations sont qualifiées (en vert).</p>
+    <table><thead><tr><th class="rank"></th><th class="left">Nation</th><th>J</th><th class="hide">Diff</th><th>Pts</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{ const me=r.code===code, q=i<qN, d=r.bp-r.bc;
+    html+=`<tr class="${me?'me ':''}${q?'qualif':''}"><td class="num rank">${i+1}</td>
+      <td class="left"><div class="tname">${flag(r.code,15)}<span>${esc(countryName(r.code))}</span></div></td>
+      <td class="num">${r.pj}</td><td class="num hide">${d>0?'+':''}${d}</td><td class="num"><strong>${r.pts}</strong></td></tr>`; });
+  wrap.innerHTML=html+`</tbody></table></div>`;
+}
+async function renderContinentalCup(zone, code){
+  const wrap=$("ccWrap"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement…</div></div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const r=await supa.from("national_competitions").select("*").eq("type","continental_cup").eq("zone",zone).eq("season",cs).limit(1);
+  const nc=(r.data&&r.data.length)?r.data[0]:null;
+  if(!nc){
+    wrap.innerHTML=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:6px">Coupe continentale — ${esc(zone)}</h3>
+      <p style="color:var(--muted);font-size:12px">Se lance automatiquement toutes les 3 saisons (prochaine : saison 3, 6, 9…), puis se joue sur l'horloge.</p></div>`;
+    return;
+  }
+  renderNTournament(wrap, nc, code);
+}
+async function renderWorldCup(code){
+  const wrap=$("wcupWrap"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement…</div></div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const r=await supa.from("national_competitions").select("*").eq("type","world_cup").eq("season",cs).limit(1);
+  const nc=(r.data&&r.data.length)?r.data[0]:null;
+  if(!nc){
+    wrap.innerHTML=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:6px">Coupe du monde</h3>
+      <p style="color:var(--muted);font-size:12px">Se lance automatiquement toutes les 6 saisons (prochaine : saison 6, 12…), puis se joue sur l'horloge.</p></div>`;
+    return;
+  }
+  renderNTournament(wrap, nc, code);
+}
+async function renderNTournament(wrap, nc, myCode){
+  const nmR=await supa.from("national_matches").select("*").eq("ncomp_id", nc.id);
+  const nm=(nmR.data||[]).filter(m=>m.stage==='group'||m.stage==='ko'||m.stage==='qualif');
+  const nat=c=>`${flag(c,15)} <span class="nm">${esc(countryName(c))}</span>`;
+  let html=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:8px">${esc(nc.name)}</h3>`;
+  if(nc.stage==='done' && nc.winner_country){
+    html+=`<div style="text-align:center;font-size:20px;margin-bottom:10px">🏆 ${flag(nc.winner_country,20)} ${esc(countryName(nc.winner_country))}</div>`;
+  }
+  const qm=nm.filter(m=>m.stage==='qualif');
+  if(qm.length){
+    html+=`<div style="font-weight:600;margin:4px 0 8px">Barrages qualificatifs</div>`;
+    qm.forEach(m=>{ const w1=m.home_score>m.away_score, w2=m.away_score>m.home_score;
+      html+=`<div class="match"><span class="side ${w1?'me':''}">${nat(m.home_country)}</span>
+        <span class="score match-link" data-match="${m.id}" style="cursor:pointer">${m.home_score} – ${m.away_score}</span>
+        <span class="side away ${w2?'me':''}"><span class="nm">${esc(countryName(m.away_country))}</span> ${flag(m.away_country,15)}</span></div>`; });
+  }
+  const gm=nm.filter(m=>m.stage==='group');
+  if(gm.length){
+    const groups=[...new Set(gm.map(m=>m.group_name))].sort();
+    html+=`<div style="font-weight:600;margin:4px 0 8px">Phase de poules</div>`;
+    groups.forEach(g=>{
+      const arr=gm.filter(m=>m.group_name===g);
+      const codes=[...new Set(arr.flatMap(m=>[m.home_country,m.away_country]))];
+      const t={}; codes.forEach(c=>t[c]={code:c,pj:0,pts:0,bp:0,bc:0});
+      arr.forEach(m=>{ if(!m.played) return; const h=t[m.home_country],a=t[m.away_country];
+        h.pj++;a.pj++;h.bp+=m.home_score;h.bc+=m.away_score;a.bp+=m.away_score;a.bc+=m.home_score;
+        if(m.home_score>m.away_score)h.pts+=3; else if(m.home_score<m.away_score)a.pts+=3; else {h.pts++;a.pts++;} });
+      const rows=Object.values(t).sort((x,y)=>y.pts-x.pts||(y.bp-y.bc)-(x.bp-x.bc));
+      html+=`<div style="margin-bottom:8px"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Groupe ${g}</div><table><tbody>`;
+      rows.forEach((r,i)=>{ html+=`<tr class="${r.code===myCode?'me ':''}${i<2?'qualif':''}"><td class="num rank">${i+1}</td>
+        <td class="left"><div class="tname">${flag(r.code,14)}<span>${esc(countryName(r.code))}</span></div></td>
+        <td class="num">${r.pj}</td><td class="num"><strong>${r.pts}</strong></td></tr>`; });
+      html+=`</tbody></table></div>`;
+    });
+  }
+  const km=nm.filter(m=>m.stage==='ko');
+  if(km.length){
+    html+=`<div style="font-weight:600;margin:10px 0 8px">Phases finales</div>`;
+    const rounds=[...new Set(km.map(m=>m.round_idx))].sort((a,b)=>a-b).map(ri=>{
+      const rm=km.filter(m=>m.round_idx===ri).sort((a,b)=>(a.pair_idx-b.pair_idx));
+      const pairs=[...new Set(rm.map(m=>m.pair_idx))].sort((a,b)=>a-b);
+      return { label: rm[0].round_label, matches: pairs.map(p=>{
+        const l1=rm.find(m=>m.pair_idx===p&&m.leg===1), l2=rm.find(m=>m.pair_idx===p&&m.leg===2);
+        const done=l1 && l1.played && (!l2||l2.played);
+        const aTot=(l1&&l1.played?l1.home_score:0)+(l2&&l2.played?l2.away_score:0);
+        const bTot=(l1&&l1.played?l1.away_score:0)+(l2&&l2.played?l2.home_score:0);
+        return { home:{name:countryName(l1?.home_country), flag:flag(l1?.home_country,13)},
+                 away:{name:countryName(l1?.away_country), flag:flag(l1?.away_country,13)},
+                 hs:aTot, as:bTot, done, mid:l1?.id };
+      }) };
+    });
+    html += bracketHTML(rounds);
+  }
+  if(nc.stage!=='done'){
+    html+=`<p style="color:var(--muted);font-size:12px;margin-top:10px">Compétition en cours — elle avance automatiquement.</p>`;
+  }
+  html+=`<div style="margin-top:12px"><h4 style="font-family:'Barlow Condensed';text-transform:uppercase;font-size:14px;color:var(--muted);margin-bottom:4px">Statistiques</h4><div id="ncScorers"></div></div>`;
+  wrap.innerHTML=html+`</div>`;
+  const scEl=wrap.querySelector("#ncScorers"); if(scEl) renderScorers(scEl, { competition_id: nc.id });
+}
+async function renderWorldQualif(code){
+  const wrap=$("wcWrap"); if(!wrap) return;
+  wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement…</div></div>';
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const ncR=await supa.from("national_competitions").select("*").eq("type","world_qualif").eq("season",cs).limit(1);
+  const nc=(ncR.data&&ncR.data.length)?ncR.data[0]:null;
+  if(!nc){
+    wrap.innerHTML=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:6px">Qualifications Coupe du monde</h3>
+      <p style="color:var(--muted);font-size:12px">Se dérouleront automatiquement selon le calendrier (avant la Coupe du monde de la saison 6).</p></div>`;
+    return;
+  }
+  const nmR=await supa.from("national_matches").select("*").eq("ncomp_id", nc.id);
+  const nm=nmR.data||[];
+  const t={};
+  nm.forEach(m=>{
+    [m.home_country,m.away_country].forEach(c=>{ if(!t[c]) t[c]={code:c,pj:0,pts:0,bp:0,bc:0}; });
+    if(!m.played) return; const h=t[m.home_country],a=t[m.away_country];
+    h.pj++;a.pj++;h.bp+=m.home_score;h.bc+=m.away_score;a.bp+=m.away_score;a.bc+=m.home_score;
+    if(m.home_score>m.away_score) h.pts+=3; else if(m.home_score<m.away_score) a.pts+=3; else {h.pts++;a.pts++;}
+  });
+  const all=Object.values(t).sort((x,y)=>y.pts-x.pts||(y.bp-y.bc)-(x.bp-x.bc));
+  const myRank=all.findIndex(r=>r.code===code);
+  let rows=all.slice(0,40);
+  if(myRank>=40) rows.push(all[myRank]);
+  let html=`<div class="card" style="margin:0"><h3 style="font-size:17px;margin-bottom:8px">Qualifications Coupe du monde</h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px">Les 32 premières nations sont qualifiées (en vert). ${all.length} nations · top 40 affiché.</p>
+    <table><thead><tr><th class="rank"></th><th class="left">Nation</th><th>J</th><th class="hide">Diff</th><th>Pts</th></tr></thead><tbody>`;
+  rows.forEach((r)=>{ const rk=all.indexOf(r); const me=r.code===code, q=rk<32, d=r.bp-r.bc;
+    html+=`<tr class="${me?'me ':''}${q?'qualif':''}"><td class="num rank">${rk+1}</td>
+      <td class="left"><div class="tname">${flag(r.code,15)}<span>${esc(countryName(r.code))}</span></div></td>
+      <td class="num">${r.pj}</td><td class="num hide">${d>0?'+':''}${d}</td><td class="num"><strong>${r.pts}</strong></td></tr>`; });
+  wrap.innerHTML=html+`</tbody></table></div>`;
+}
+async function saveNationalLineup(code){
+  if(natStarters.size!==5){ alert("Sélectionne exactement 5 titulaires."); return; }
+  const btn=$("saveNat"); btn.disabled=true; btn.textContent="…";
+  const { error } = await supa.rpc("set_national_lineup",{ p_country:code, p_ids:[...natStarters] });
+  btn.disabled=false;
+  if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
+  btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveNat")) btn.textContent="Enregistrer"; },1500);
+}
+
+/* ---------- Ligue des champions ---------- */
+async function renderCL(){
+  const el=$("tab-cl");
+  el.innerHTML=`<div class="card"><h3 style="font-size:18px;margin-bottom:4px">Ligue des champions</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Compétition continentale par zone : poules (groupes de 4) puis phases finales aller-retour.</p>
+    <label>Zone</label><select id="clZone"></select>
+    <div id="clBody" style="margin-top:14px"><div class="loading">Chargement…</div></div></div>
+    <div id="scBody"></div>`;
+  const sel=$("clZone");
+  const myZone=myTeam?countryZone(myTeam.country_code):"Europe";
+  ZONES.forEach(z=>{ const o=document.createElement("option"); o.value=z; o.textContent=z; if(z===myZone)o.selected=true; sel.appendChild(o); });
+  sel.addEventListener("change", loadCL);
+  loadCL();
+  renderSuperCup();
+}
+async function renderSuperCup(){
+  const host=$("scBody"); if(!host) return;
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const r=await supa.from("competitions").select("*").eq("type","super_cup").eq("season",cs).limit(1);
+  const comp=(r.data&&r.data.length)?r.data[0]:null;
+  if(!comp){
+    host.innerHTML=`<div class="card"><h3 style="font-size:17px;margin-bottom:6px">Super-Coupe mondiale</h3>
+      <p style="color:var(--muted);font-size:12px">Réunit les vainqueurs des Ligues des champions de zone. Se lance automatiquement quand toutes les C1 sont terminées.</p></div>`;
+    return;
+  }
+  const cmR=await supa.from("competition_matches").select("*").eq("competition_id", comp.id);
+  const cms=cmR.data||[];
+  const ids=[...new Set(cms.flatMap(m=>[m.home_team_id,m.away_team_id]).filter(Boolean))];
+  const tmap={}; if(ids.length){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",ids); (tt||[]).forEach(t=>tmap[t.id]=t); }
+  let html=`<div class="card"><h3 style="font-size:17px;margin-bottom:8px">Super-Coupe mondiale</h3>`;
+  if(comp.winner_team_id){ const w=tmap[comp.winner_team_id];
+    html+=`<div style="text-align:center;font-size:20px;margin-bottom:10px">🏆 ${w?flag(w.country_code,20)+' '+esc(w.name):'—'}</div>`; }
+  const rounds=[...new Set(cms.map(m=>m.round_idx))].sort((a,b)=>a-b);
+  rounds.forEach(ri=>{
+    const rm=cms.filter(m=>m.round_idx===ri).sort((a,b)=>a.pair_idx-b.pair_idx);
+    html+=`<div style="font-weight:600;margin:8px 0 6px">${esc(rm[0].round_label)}</div>`;
+    rm.forEach(m=>{ const A=tmap[m.home_team_id],B=tmap[m.away_team_id],aw=m.home_score>m.away_score;
+      html+=`<div class="match"><span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
+        <span class="score">${m.home_score} – ${m.away_score}</span>
+        <span class="side away ${!aw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`; });
+  });
+  host.innerHTML=html+`</div>`;
+}
+async function loadCL(){
+  const host=$("clBody"); if(!host) return;
+  host.innerHTML='<div class="loading">Chargement…</div>';
+  const zone=$("clZone").value;
+  const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+  const cs=gsR.data?gsR.data.current_season:1;
+  const compR=await supa.from("competitions").select("*").eq("type","champions_league").eq("zone",zone).eq("season",cs).limit(1);
+  const comp=(compR.data&&compR.data.length)?compR.data[0]:null;
+  if(!comp){
+    host.innerHTML=`<div class="empty" style="padding:14px 0">La Ligue des champions de ${esc(zone)} n'a pas encore débuté pour la saison ${cs}.</div>
+      <p style="color:var(--muted);font-size:12px">Elle se lance automatiquement une fois les championnats de la zone terminés, puis se joue sur l'horloge.</p>`;
+    return;
+  }
+  const [ctR, cmR] = await Promise.all([
+    supa.from("competition_teams").select("*").eq("competition_id", comp.id),
+    supa.from("competition_matches").select("*").eq("competition_id", comp.id)
+  ]);
+  const cts=ctR.data||[], cms=cmR.data||[];
+  const teamIds=[...new Set(cms.flatMap(m=>[m.home_team_id,m.away_team_id]).filter(Boolean))];
+  const tmap={};
+  if(teamIds.length){ const {data:tt}=await supa.from("teams").select("id,name,country_code").in("id",teamIds); (tt||[]).forEach(t=>tmap[t.id]=t); }
+
+  let html="";
+  if(comp.stage==='done' && comp.winner_team_id){
+    const w=tmap[comp.winner_team_id];
+    html+=`<div class="card" style="margin:0 0 12px;text-align:center"><div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Vainqueur</div>
+      <div style="font-size:22px;margin-top:6px">🏆 ${w?flag(w.country_code,20)+' '+esc(w.name):'—'}</div></div>`;
+  }
+  const groupMatches=cms.filter(m=>m.stage==='group');
+  const qualMatches=cms.filter(m=>m.stage==='qualif');
+  if(qualMatches.length){
+    const rounds=[...new Set(qualMatches.map(m=>m.round_idx))].sort((a,b)=>a-b);
+    html+=`<h3 style="font-size:16px;margin:4px 0 10px">Tours de qualification</h3>`;
+    rounds.forEach(ri=>{
+      const rm=qualMatches.filter(m=>m.round_idx===ri);
+      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">Tour ${ri}</div>`;
+      rm.sort((a,b)=>a.pair_idx-b.pair_idx).forEach(m=>{
+        const A=tmap[m.home_team_id], B=tmap[m.away_team_id];
+        const aw=m.home_score>m.away_score;
+        html+=`<div class="match"><span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
+          <span class="score">${m.home_score} – ${m.away_score}</span>
+          <span class="side away ${!aw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+  if(groupMatches.length){
+    const groups=[...new Set(cts.map(c=>c.group_name))].sort();
+    html+=`<h3 style="font-size:16px;margin:4px 0 10px">Phase de poules</h3>`;
+    groups.forEach(g=>{
+      const gTeams=cts.filter(c=>c.group_name===g).map(c=>c.team_id);
+      const gm=groupMatches.filter(m=>m.group_name===g);
+      const rows=clGroupStandings(gTeams, gm, tmap);
+      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:6px">Groupe ${g}</div>${clMiniTable(rows)}</div>`;
+    });
+  }
+  const koMatches=cms.filter(m=>m.stage==='ko');
+  if(koMatches.length){
+    const rounds=[...new Set(koMatches.map(m=>m.round_idx))].sort((a,b)=>a-b);
+    html+=`<h3 style="font-size:16px;margin:12px 0 10px">Phases finales</h3>`;
+    rounds.forEach(ri=>{
+      const rm=koMatches.filter(m=>m.round_idx===ri);
+      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">${esc(rm[0].round_label)}</div>`;
+      const pairs=[...new Set(rm.map(m=>m.pair_idx))].sort((a,b)=>a-b);
+      pairs.forEach(p=>{
+        const l1=rm.find(m=>m.pair_idx===p&&m.leg===1), l2=rm.find(m=>m.pair_idx===p&&m.leg===2);
+        if(!l1) return;
+        const A=tmap[l1.home_team_id], B=tmap[l1.away_team_id];
+        const done=l1.played&&(!l2||l2.played);
+        const aTot=(l1.played?l1.home_score:0)+(l2&&l2.played?l2.away_score:0);
+        const bTot=(l1.played?l1.away_score:0)+(l2&&l2.played?l2.home_score:0);
+        const legs=`aller ${l1.played?l1.home_score+'-'+l1.away_score:'–'} · retour ${l2&&l2.played?l2.home_score+'-'+l2.away_score:'–'}`;
+        const win = done ? (aTot>bTot?'A':(bTot>aTot?'B':'?')) : '';
+        html+=`<div class="match"><span class="side ${win==='A'?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
+          <span class="score">${done?aTot+' – '+bTot:'<span style="color:var(--muted);font-size:12px">VS</span>'}</span>
+          <span class="side away ${win==='B'?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin:-2px 0 8px">${legs}</div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+  if(comp.stage!=='done'){
+    html+=`<p style="color:var(--muted);font-size:12px">Compétition en cours — elle avance automatiquement.</p>`;
+  }
+  host.innerHTML=html;
+  const scEl=document.createElement("div"); scEl.className="card"; scEl.innerHTML='<h3 style="font-size:17px;margin-bottom:6px">Statistiques</h3><div id="clScorers"></div>';
+  host.appendChild(scEl);
+  renderScorers($("clScorers"), { competition_id: comp.id });
+}
+function clGroupStandings(teamIds, matches, tmap){
+  const t={}; teamIds.forEach(id=>t[id]={id,team:tmap[id],pj:0,pts:0,bp:0,bc:0});
+  matches.forEach(m=>{ if(!m.played) return; const h=t[m.home_team_id],a=t[m.away_team_id]; if(!h||!a) return;
+    h.pj++;a.pj++;h.bp+=m.home_score;h.bc+=m.away_score;a.bp+=m.away_score;a.bc+=m.home_score;
+    if(m.home_score>m.away_score) h.pts+=3; else if(m.home_score<m.away_score) a.pts+=3; else {h.pts++;a.pts++;} });
+  return Object.values(t).sort((x,y)=>y.pts-x.pts||(y.bp-y.bc)-(x.bp-x.bc));
+}
+function clMiniTable(rows){
+  let h=`<table><thead><tr><th class="rank"></th><th class="left">Équipe</th><th>J</th><th>Pts</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{ h+=`<tr class="${i<2?'qualif':''}"><td class="num rank">${i+1}</td>
+    <td class="left"><div class="tname">${flag(r.team&&r.team.country_code,15)}<span>${esc(r.team&&r.team.name||'?')}</span></div></td>
+    <td class="num">${r.pj}</td><td class="num"><strong>${r.pts}</strong></td></tr>`; });
+  return h+`</tbody></table>`;
+}
+async function openLeague(champId){
+  const el=$("tab-leagues"); el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:champ } = await supa.from("championships").select("*").eq("id", champId).single();
+  const { data:teams } = await supa.from("teams").select("*").eq("championship_id", champId);
+  const { data:played } = await supa.from("matches").select("*").eq("championship_id", champId).eq("played", true);
+  const rows=computeTable(teams||[], played||[]);
+  el.innerHTML=`<div class="back" id="backLeagues">← Toutes les ligues</div>
+    <div class="card"><div class="team-hero" style="gap:12px">${flag(champ.country_code,34)}
+      <div><h2 style="font-size:24px">${esc(champ.country_name)}</h2><div class="meta">Division ${champ.division} · Saison ${champ.season}</div></div></div></div>
+    <div class="card"><h3 style="font-size:17px;margin-bottom:10px">Classement</h3>${tableHtml(rows, myTeam?myTeam.id:null)}</div>
+    <div class="card"><h3 style="font-size:17px;margin-bottom:10px">Calendrier</h3><div id="leagueCal"></div></div>
+    <div class="card"><h3 style="font-size:17px;margin-bottom:6px">Statistiques</h3><div id="leagueScorers"></div></div>`;
+  $("backLeagues").addEventListener("click", renderLeaguesList);
+  renderCalendarFor(champId, $("leagueCal"));
+  renderScorers($("leagueScorers"), { championship_id: champId });
+}
+
+/* ---------- Mercato ---------- */
+async function renderMercato(){
+  const el=$("tab-mercato"); el.innerHTML='<div class="loading">Chargement…</div>';
+  await refreshMyTeam();
+  el.innerHTML=`<div class="card">
+      <h3 style="font-size:18px;margin-bottom:4px">Mercato</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Recrute des joueurs des équipes bots. Budget : <b style="color:var(--green)">${fmtMoney(myTeam.budget)}</b></p>
+      <div class="filter-bar">
+        <input id="mkSearch" type="text" placeholder="Rechercher un joueur…">
+        <select id="mkCountry"><option value="">Tous les pays</option></select>
+      </div>
+      <div id="mkList"><div class="loading">Chargement des joueurs…</div></div></div>`;
+  const { data:champs } = await supa.from("championships").select("country_code,country_name");
+  const seen={}; const csel=$("mkCountry");
+  (champs||[]).forEach(c=>{ if(!seen[c.country_code]){ seen[c.country_code]=1;
+    const o=document.createElement("option"); o.value=c.country_code; o.textContent=c.country_name; csel.appendChild(o); }});
+  $("mkSearch").addEventListener("input", loadMercato);
+  $("mkCountry").addEventListener("change", loadMercato);
+  loadMercato();
+}
+async function loadMercato(){
+  const host=$("mkList"); if(!host) return;
+  host.innerHTML='<div class="loading">Chargement…</div>';
+  const search=($("mkSearch").value||"").toLowerCase(), country=$("mkCountry").value;
+  let q=supa.from("teams").select("id,name,country_code").eq("is_bot", true);
+  if(country) q=q.eq("country_code", country);
+  const { data:bots } = await q.limit(80);
+  const ids=(bots||[]).map(b=>b.id); const bmap={}; (bots||[]).forEach(b=>bmap[b.id]=b);
+  if(!ids.length){ host.innerHTML='<div class="empty">Aucun joueur disponible.</div>'; return; }
+  const { data:players } = await supa.from("players").select("*").in("team_id", ids).order("rating",{ascending:false}).limit(400);
+  let list=(players||[]);
+  if(search) list=list.filter(p=>p.name.toLowerCase().includes(search));
+  list=list.slice(0,60);
+  if(!list.length){ host.innerHTML='<div class="empty">Aucun résultat.</div>'; return; }
+  let html="";
+  list.forEach(p=>{
+    const club=bmap[p.team_id], price=p.rating*15000, cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    html+=`<div class="market-row"><span class="mk-rating ${cls}">${p.rating}</span>
+      <div class="mk-info"><div class="mk-name">${esc(p.name)}</div>
+        <div class="mk-sub">${p.position} · ${p.age} ans · ${club?flag(club.country_code,12)+' '+esc(club.name):'—'}</div></div>
+      <div style="text-align:right"><div class="mk-price">${fmtMoney(price)}</div>
+        <button class="btn btn-orange btn-small buy" data-id="${p.id}" data-fee="${price}" style="margin-top:5px">Recruter</button></div></div>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll(".buy").forEach(b=>b.addEventListener("click", ()=>signPlayer(b.dataset.id, +b.dataset.fee, b)));
+}
+async function signPlayer(id, fee, btn){
+  if(myTeam.budget<fee){ alert("Budget insuffisant."); return; }
+  btn.disabled=true; btn.textContent="…";
+  const { error } = await supa.rpc("sign_player",{ p_player_id:id, p_fee:fee, p_team:myTeam.id });
+  if(error){ alert(error.message); btn.disabled=false; btn.textContent="Recruter"; return; }
+  await refreshMyTeam(); loadMercato();
+}
+
+/* ---------- Enchères ---------- */
+async function renderAuctions(){
+  const el=$("tab-auctions"); el.innerHTML='<div class="loading">Préparation des enchères…</div>';
+  await supa.rpc("seed_auctions");
+  await refreshMyTeam();
+  el.innerHTML=`<div class="card"><h3 style="font-size:18px;margin-bottom:4px">Enchères</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Agents libres au plus offrant. Budget : <b style="color:var(--green)">${fmtMoney(myTeam.budget)}</b></p>
+    <div id="aucList"><div class="loading">Chargement…</div></div></div>`;
+  await loadAuctions();
+  auctionTimer=setInterval(updateCountdowns, 1000);
+}
+async function loadAuctions(){
+  const host=$("aucList"); if(!host) return;
+  const { data:auctions } = await supa.from("auctions").select("*").eq("finalized", false).order("ends_at");
+  const active=(auctions||[]).filter(a=>new Date(a.ends_at)>new Date());
+  if(!active.length){ host.innerHTML='<div class="empty">Aucune enchère active. Reviens dans un instant.</div>'; return; }
+  const ids=active.map(a=>a.player_id);
+  const { data:players } = await supa.from("players").select("*").in("id", ids);
+  const pmap={}; (players||[]).forEach(p=>pmap[p.id]=p);
+  let html="";
+  active.forEach(a=>{
+    const p=pmap[a.player_id]; if(!p) return;
+    const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    html+=`<div class="market-row" data-end="${a.ends_at}"><span class="mk-rating ${cls}">${p.rating}</span>
+      <div class="mk-info"><div class="mk-name">${esc(p.name)}</div>
+        <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
+        <div class="mk-sub">Meilleure offre : <b style="color:var(--green)">${fmtMoney(a.current_bid)}</b>${a.highest_bidder_name?` (${mine?'toi':esc(a.highest_bidder_name)})`:''}</div></div>
+      <button class="btn btn-orange btn-small bid" data-id="${a.id}" data-amt="${next}">Enchérir ${fmtMoney(next)}</button></div>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll(".bid").forEach(b=>b.addEventListener("click", ()=>placeBid(b.dataset.id, +b.dataset.amt, b)));
+  updateCountdowns();
+}
+function updateCountdowns(){
+  let expired=false;
+  document.querySelectorAll("#aucList .market-row").forEach(row=>{
+    const diff=Math.floor((new Date(row.dataset.end)-new Date())/1000), cd=row.querySelector(".countdown");
+    if(diff<=0){ if(cd) cd.textContent="terminée"; expired=true; }
+    else if(cd){ cd.textContent=`${Math.floor(diff/60)}:${String(diff%60).padStart(2,'0')}`; }
+  });
+  if(expired && auctionTimer){ clearInterval(auctionTimer); auctionTimer=null;
+    supa.rpc("finalize_due_auctions").then(async()=>{ await refreshMyTeam(); await loadAuctions(); auctionTimer=setInterval(updateCountdowns,1000); }); }
+}
+async function placeBid(id, amt, btn){
+  if(myTeam.budget<amt){ alert("Budget insuffisant."); return; }
+  btn.disabled=true; btn.textContent="…";
+  const { error } = await supa.rpc("place_bid",{ p_auction_id:id, p_amount:amt, p_team:myTeam.id });
+  if(error) alert(error.message);
+  await refreshMyTeam(); await loadAuctions();
+}
+
+/* ---------- Panthéon ---------- */
+async function renderHall(){
+  const el=$("tab-hall");
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data } = await supa.from("hall_of_fame").select("*").order("season",{ascending:false});
+  const rows=data||[];
+  if(!rows.length){
+    el.innerHTML=`<div class="card"><h2 style="font-size:22px;margin-bottom:6px">Panthéon</h2>
+      <p style="color:var(--muted)">Aucun palmarès pour l'instant. Les vainqueurs de chaque compétition seront enregistrés ici à la fin de chaque saison.</p></div>`;
+    return;
+  }
+  const order=["Ballon d'Or","Coupe du monde","Coupe continentale","Ligue des champions","Super-Coupe","Coupe nationale","Championnat"];
+  const byCat={};
+  rows.forEach(r=>{ (byCat[r.category]=byCat[r.category]||[]).push(r); });
+  const cats=Object.keys(byCat).sort((a,b)=>{ const ia=order.indexOf(a), ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+  let html=`<div class="card"><h2 style="font-size:24px;margin-bottom:4px">🏛️ Panthéon</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:0">Le palmarès des vainqueurs, saison après saison.</p></div>`;
+  cats.forEach(cat=>{
+    const list=byCat[cat].slice().sort((a,b)=>b.season-a.season);
+    html+=`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">${esc(cat)}</h3>`;
+    list.forEach(r=>{
+      html+=`<div class="match"><span class="side">${flag(r.flag_code,15)} <b>${esc(r.winner_name||'—')}</b></span>
+        <span style="color:var(--muted);font-size:12px;text-align:right">${esc(r.title||'')}<br><span style="color:var(--orange);font-family:'Space Mono',monospace">Saison ${r.season}</span></span></div>`;
+    });
+    html+=`</div>`;
+  });
+  el.innerHTML=html;
+}
+
+/* ---------- Joueurs actifs ---------- */
+function timeAgo(ms){
+  const s=Math.floor(ms/1000);
+  if(s<60) return "à l'instant";
+  const m=Math.floor(s/60); if(m<60) return 'il y a '+m+' min';
+  const h=Math.floor(m/60); if(h<24) return 'il y a '+h+' h';
+  return 'il y a '+Math.floor(h/24)+' j';
+}
+async function renderPlayers(){
+  const el=$("tab-players");
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  try{ await supa.rpc("ping_presence"); }catch(e){}
+  const { data:pres } = await supa.from("presence").select("*").order("last_seen",{ascending:false}).limit(200);
+  const rows=pres||[];
+  const uids=rows.map(r=>r.user_id);
+  const tmap={}, smap={};
+  if(uids.length){
+    const { data:teams } = await supa.from("teams").select("user_id,name,country_code").in("user_id",uids);
+    (teams||[]).forEach(t=>{ if(t.user_id){ (tmap[t.user_id]=tmap[t.user_id]||[]).push(t); } });
+    const { data:sels } = await supa.from("national_selections").select("coach_user_id,country_code").in("coach_user_id",uids);
+    (sels||[]).forEach(s=>{ if(s.coach_user_id){ (smap[s.coach_user_id]=smap[s.coach_user_id]||[]).push(s.country_code); } });
+  }
+  const now=Date.now();
+  const ageMs=r=>now-new Date(r.last_seen).getTime();
+  const online=rows.filter(r=>ageMs(r)<3*60000);
+  const recent=rows.filter(r=>{ const d=ageMs(r); return d>=3*60000 && d<24*3600000; });
+  const card=r=>{
+    const clubs=tmap[r.user_id]||[], nations=smap[r.user_id]||[];
+    const clubsHtml = clubs.length ? clubs.map(c=>`${flag(c.country_code,13)} ${esc(c.name)}`).join(' · ') : '<span style="color:var(--muted)">aucun club</span>';
+    const natHtml = nations.length ? `<div style="font-size:12px;color:var(--green);margin-top:2px">Sélectionneur : ${nations.map(c=>`${flag(c,13)} ${esc(countryName(c))}`).join(', ')}</div>` : '';
+    return `<div class="player" style="align-items:flex-start;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:center;gap:8px;width:100%"><b>@${esc(r.pseudo||'manager')}</b>
+        <span style="color:var(--muted);font-size:11px;margin-left:auto">${timeAgo(ageMs(r))}</span></div>
+      <div style="font-size:13px">${clubsHtml}</div>${natHtml}</div>`;
+  };
+  let html=`<div class="card"><h2 style="font-size:24px;margin-bottom:2px">Joueurs actifs</h2>
+    <p style="color:var(--muted);font-size:13px">🟢 ${online.length} en ligne · ${rows.length} vus récemment</p></div>`;
+  html+=`<div class="card"><h3 style="font-size:18px;margin-bottom:10px">🟢 En ligne maintenant (${online.length})</h3>`;
+  html+= online.length ? online.map(card).join('') : '<div class="empty" style="padding:8px 0">Personne pour l\'instant.</div>';
+  html+=`</div><div class="card"><h3 style="font-size:18px;margin-bottom:10px">Connectés récemment</h3>`;
+  html+= recent.length ? recent.map(card).join('') : '<div class="empty" style="padding:8px 0">—</div>';
+  el.innerHTML=html+`</div>`;
+}
+
+/* ---------- Ballon d'Or ---------- */
+async function renderBallonDor(){
+  const el=$("tab-bdor");
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data } = await supa.rpc("top_players",{ p_limit:40 });
+  const rows=data||[];
+  if(!rows.length){
+    el.innerHTML=`<div class="card"><h2 style="font-size:24px;margin-bottom:4px">🏆 Ballon d'Or</h2>
+      <p style="color:var(--muted)">Aucune statistique pour l'instant — les buts et passes de la saison apparaîtront ici au fil des matchs.</p></div>`;
+    return;
+  }
+  let html=`<div class="card"><h2 style="font-size:24px;margin-bottom:2px">🏆 Ballon d'Or</h2>
+    <p style="color:var(--muted);font-size:13px">Score = buts + passes + 2 × homme du match — saison ${gameSeason}.</p></div>
+    <div class="card"><table><thead><tr><th class="num">#</th><th class="left">Joueur</th><th class="num">B</th><th class="num">P</th><th class="num hide">⭐</th><th class="num">Score</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    html+=`<tr><td class="num rank">${rank}</td>
+      <td class="left"><div class="tname">${flag(r.nationality,14)}<span>${esc(r.pname)}</span></div>
+        <div style="font-size:11px;color:var(--muted)">${esc(r.team_name||'—')} · Note ${r.rating}</div></td>
+      <td class="num">${r.goals}</td><td class="num">${r.assists}</td><td class="num hide">${r.mvp}</td><td class="num"><strong>${r.score}</strong></td></tr>`;
+  });
+  el.innerHTML=html+`</tbody></table></div>`;
+}
+
+/* ---------- Monde : Coupes ---------- */
+async function renderMondeCups(){
+  const el=$("tab-coupes");
+  const defCode = myTeam ? myTeam.country_code : (ALL_COUNTRIES[0] && ALL_COUNTRIES[0].code);
+  if(!defCode){ el.innerHTML='<div class="empty">Aucune donnée.</div>'; return; }
+  let sel='<select id="cupCountry" class="club-select" style="max-width:220px">';
+  ZONES.forEach(z=>{ const inZone=ALL_COUNTRIES.filter(c=>c.zone===z); if(!inZone.length) return;
+    sel+=`<optgroup label="${esc(z)}">`+inZone.map(c=>`<option value="${c.code}" ${c.code===defCode?'selected':''}>${esc(c.name)}</option>`).join('')+'</optgroup>'; });
+  sel+='</select>';
+  el.innerHTML=`<div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="color:var(--muted);font-size:13px">Consulter les coupes de :</span>${sel}</div>
+    <div id="mcNat"></div><div id="ccWrap" style="margin-top:12px"></div><div id="wcupWrap" style="margin-top:12px"></div>`;
+  const draw=code=>{ renderNationalCup(code,"mcNat"); renderContinentalCup(countryZone(code), code); renderWorldCup(code); };
+  draw(defCode);
+  $("cupCountry").addEventListener("change", ()=>draw($("cupCountry").value));
+}
+
+/* ---------- La Gazette ---------- */
+async function renderGazette(){
+  const el=$("tab-gazette");
+  el.innerHTML=`<div class="card"><h3 style="font-size:18px;margin-bottom:8px">📰 La Gazette</h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px">L'actu du jeu : performances, cartons, titres… et tes propres messages.</p>
+    <div class="chat-input"><input id="gzInput" type="text" placeholder="Publie un message…" maxlength="280"><button id="gzSend" class="btn">Publier</button></div>
+    <div id="gzMsg" class="msg"></div></div>
+    <div id="gzFeed"><div class="loading">Chargement…</div></div>`;
+  $("gzSend").addEventListener("click", async()=>{
+    const v=$("gzInput").value.trim(); if(!v) return;
+    $("gzSend").disabled=true;
+    const { error } = await supa.rpc("post_gazette",{ p_content:v });
+    if(error){ msg($("gzMsg"), error.message, "error"); $("gzSend").disabled=false; return; }
+    $("gzInput").value=""; $("gzSend").disabled=false; loadGazetteFeed();
+  });
+  $("gzInput").addEventListener("keydown", e=>{ if(e.key==="Enter") $("gzSend").click(); });
+  loadGazetteFeed();
+}
+async function loadGazetteFeed(){
+  const feed=$("gzFeed"); if(!feed) return;
+  const { data } = await supa.from("gazette_posts").select("*").order("created_at",{ascending:false}).limit(50);
+  const rows=data||[];
+  if(!rows.length){ feed.innerHTML='<div class="card"><div class="empty" style="padding:8px 0">Aucune actu pour l\'instant.</div></div>'; return; }
+  feed.innerHTML=rows.map(p=>{
+    const sys=p.kind==='system';
+    const when=new Date(p.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div class="card" style="padding:12px 14px;margin-bottom:8px;${sys?'border-left:3px solid var(--orange)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <b style="${sys?'color:var(--orange)':''}">${sys?'📰 La Gazette':'@'+esc(p.author||'manager')}</b>
+        <span style="color:var(--muted);font-size:11px">${when}</span></div>
+      <div style="margin-top:4px">${esc(p.content)}</div></div>`;
+  }).join('');
+}
+
+/* ---------- Tchat général ---------- */
+async function renderChat(){
+  const el=$("tab-chat");
+  markChatRead();
+  el.innerHTML=`<div class="card"><h3 style="font-size:18px;margin-bottom:12px">Tchat général</h3>
+    <div class="chat-box"><div class="chat-msgs" id="chatMsgs"><div class="loading">Chargement…</div></div>
+    <div class="chat-input"><input id="chatInput" type="text" placeholder="Écris un message…" maxlength="300">
+    <button id="chatSend" class="btn">Envoyer</button></div></div></div>`;
+  await loadMessages();
+  $("chatSend").addEventListener("click", sendMessage);
+  $("chatInput").addEventListener("keydown", e=>{ if(e.key==="Enter") sendMessage(); });
+  chatChannel = supa.channel("public:messages")
+    .on("postgres_changes",{ event:"INSERT", schema:"public", table:"messages" }, payload=>{ appendMessage(payload.new); scrollChat(); })
+    .subscribe();
+  chatPollTimer=setInterval(loadMessages, 5000);
+}
+async function loadMessages(){
+  const box=$("chatMsgs"); if(!box) return;
+  const { data } = await supa.from("messages").select("*").order("created_at",{ascending:true}).limit(80);
+  box.innerHTML=""; (data||[]).forEach(appendMessage); scrollChat();
+}
+function appendMessage(m){
+  const box=$("chatMsgs"); if(!box) return;
+  if(box.querySelector(`[data-mid="${m.id}"]`)) return;
+  const mine=m.user_id===myUserId;
+  const time=new Date(m.created_at).toLocaleTimeString("fr-FR",{hour:'2-digit',minute:'2-digit'});
+  const div=document.createElement("div");
+  div.className="chat-msg"+(mine?" mine":""); div.dataset.mid=m.id;
+  div.innerHTML=`<div class="chat-who">${esc(m.pseudo)}</div><div class="chat-text">${esc(m.content)}</div><div class="chat-time">${time}</div>`;
+  box.appendChild(div);
+}
+function scrollChat(){ const b=$("chatMsgs"); if(b) b.scrollTop=b.scrollHeight; }
+async function sendMessage(){
+  const inp=$("chatInput"); const txt=inp.value.trim(); if(!txt) return;
+  inp.value="";
+  const { error } = await supa.from("messages").insert({ user_id:myUserId, pseudo:myPseudo, content:txt });
+  if(error){ alert(error.message); inp.value=txt; }
+}
+</script>
+</body>
+</html>
