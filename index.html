@@ -973,8 +973,27 @@ async function renderLeague(){
   }
   if(over) html+=`<p style="color:var(--green);margin-top:14px;font-size:14px">🏆 Saison terminée. ${esc(rows[0].team.name)} est champion !</p>`;
   else html+=`<p style="color:var(--muted);margin-top:14px;font-size:13px">Les matchs se jouent automatiquement aux dates prévues (voir Calendrier).</p>`;
-  el.innerHTML=html+`</div><div class="card"><h3 style="font-size:18px;margin-bottom:6px">Statistiques</h3><div id="lgScorers"></div></div>
+  el.innerHTML=html+`</div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:6px">Derniers résultats</h3><div id="lgResults"></div></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:6px">Statistiques</h3><div id="lgScorers"></div></div>
     <div id="natCupBox"></div>`;
+  // Résultats de la ligue (par journée, plus récent en premier)
+  const tmap={}; (teams||[]).forEach(t=>tmap[t.id]=t);
+  const res=$("lgResults");
+  const mds=[...new Set((played||[]).map(m=>m.matchday))].sort((a,b)=>b-a).slice(0,3);
+  if(!mds.length){ res.innerHTML='<div class="empty" style="padding:6px 0">Aucun match joué pour l\'instant.</div>'; }
+  else {
+    res.innerHTML=mds.map(md=>{
+      const list=(played||[]).filter(m=>m.matchday===md);
+      const rows=list.map(m=>{ const A=tmap[m.home_team_id], B=tmap[m.away_team_id];
+        const aw=m.home_score>m.away_score, bw=m.away_score>m.home_score;
+        return `<div class="match"><span class="side ${aw?'me':''}">${flag(A?.country_code,14)}<span class="nm">${esc(A?.name||'?')}</span></span>
+          <span class="score match-link" data-match="${m.id}" style="cursor:pointer">${m.home_score} – ${m.away_score}</span>
+          <span class="side away ${bw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,14)}</span></div>`;
+      }).join('');
+      return `<div style="font-weight:600;font-size:13px;color:var(--muted);margin:6px 0 4px">Journée ${md}</div>${rows}`;
+    }).join('');
+  }
   renderScorers($("lgScorers"), { championship_id: myChampId });
   renderNationalCup(myTeam.country_code);
 }
