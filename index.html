@@ -234,6 +234,24 @@
     <button id="authBtn" class="btn">Se connecter</button>
     <div id="authMsg" class="msg"></div>
     <div class="switch" id="authSwitch">Pas encore de compte ? <a id="switchLink">Créer un compte</a></div>
+    <div class="switch"><a id="forgotLink">Mot de passe oublié ?</a></div>
+  </div>
+</div>
+
+<div id="forgotScreen" class="center-screen hidden">
+  <div class="card auth-card">
+    <div class="auth-head"><div class="dot"></div><h1>Mot de passe oublié</h1><p>Demande un code, puis choisis un nouveau mot de passe</p></div>
+    <label>Pseudo</label><input id="fgPseudo" type="text" placeholder="ton_pseudo">
+    <button id="fgAskBtn" class="btn">Demander un code</button>
+    <div id="fgAskMsg" class="msg"></div>
+    <div style="border-top:1px solid var(--line);margin:14px 0"></div>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px">L'administrateur (Tiglouu) te communiquera un code à 4 chiffres. Saisis-le ici.</p>
+    <label>Code à 4 chiffres</label><input id="fgCode" type="text" inputmode="numeric" maxlength="4" placeholder="1234">
+    <label>Nouveau mot de passe</label><input id="fgPw1" type="password" placeholder="••••••••">
+    <label>Confirmer</label><input id="fgPw2" type="password" placeholder="••••••••">
+    <button id="fgResetBtn" class="btn btn-orange">Changer le mot de passe</button>
+    <div id="fgMsg" class="msg"></div>
+    <div class="switch"><a id="fgBack">← Retour à la connexion</a></div>
   </div>
 </div>
 
@@ -349,7 +367,7 @@ function tacticCardHtml(){
 }
 
 const $ = id => document.getElementById(id);
-function show(id){ ["setupScreen","authScreen","createScreen","gameScreen"].forEach(s=>$(s).classList.add("hidden")); $(id).classList.remove("hidden"); }
+function show(id){ ["setupScreen","authScreen","forgotScreen","createScreen","gameScreen"].forEach(s=>$(s).classList.add("hidden")); $(id).classList.remove("hidden"); }
 function msg(el,t,type){ el.className="msg "+type; el.textContent=t; }
 function clearMsg(el){ el.className="msg"; el.textContent=""; }
 function fmtMoney(n){ return (n||0).toLocaleString("fr-FR")+" €"; }
@@ -480,6 +498,29 @@ function wireEvents(){
   });
   $("authBtn").addEventListener("click", handleAuth);
   $("password").addEventListener("keydown", e=>{ if(e.key==="Enter") handleAuth(); });
+  $("forgotLink").addEventListener("click", ()=>{ clearMsg($("fgMsg")); clearMsg($("fgAskMsg")); show("forgotScreen"); });
+  $("fgBack").addEventListener("click", ()=>show("authScreen"));
+  $("fgAskBtn").addEventListener("click", async()=>{
+    const p=$("fgPseudo").value.trim();
+    if(!p){ msg($("fgAskMsg"), "Entre ton pseudo.", "error"); return; }
+    const btn=$("fgAskBtn"); btn.disabled=true; btn.textContent="…";
+    const { data, error } = await supa.rpc("request_password_reset",{ p_pseudo:p });
+    btn.disabled=false; btn.textContent="Demander un code";
+    if(error){ msg($("fgAskMsg"), error.message, "error"); return; }
+    msg($("fgAskMsg"), data || "Demande envoyée.", "info");
+  });
+  $("fgResetBtn").addEventListener("click", async()=>{
+    const p=$("fgPseudo").value.trim(), c=$("fgCode").value.trim(), a=$("fgPw1").value, b=$("fgPw2").value;
+    if(!p||!c){ msg($("fgMsg"), "Pseudo et code requis.", "error"); return; }
+    if(a.length<6){ msg($("fgMsg"), "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
+    if(a!==b){ msg($("fgMsg"), "Les mots de passe ne correspondent pas.", "error"); return; }
+    const btn=$("fgResetBtn"); btn.disabled=true; btn.textContent="…";
+    const { data, error } = await supa.rpc("reset_password_with_code",{ p_pseudo:p, p_code:c, p_new_password:a });
+    btn.disabled=false; btn.textContent="Changer le mot de passe";
+    if(error){ msg($("fgMsg"), error.message, "error"); return; }
+    msg($("fgMsg"), data || "Mot de passe modifié.", "info");
+    setTimeout(()=>{ show("authScreen"); $("pseudo").value=p; }, 1600);
+  });
   $("createBtn").addEventListener("click", handleCreateTeam);
   $("logoutBtn").addEventListener("click", async()=>{ await supa.auth.signOut(); location.reload(); });
   $("clubSelect").addEventListener("change", ()=>{
