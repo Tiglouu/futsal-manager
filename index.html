@@ -864,7 +864,15 @@ async function renderSquad(){
         <select id="cmpA" style="flex:1;min-width:120px"></select>
         <select id="cmpB" style="flex:1;min-width:120px"></select>
       </div>
-      <div id="cmpOut"></div></div>`;
+      <div id="cmpOut"></div></div>
+    <div class="card"><h3 style="font-size:18px;margin-bottom:4px">🔒 Mon compte</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Change ton mot de passe (6 caractères minimum). Note-le bien : il est impossible de le récupérer s'il est oublié.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="pw1" type="password" placeholder="Nouveau mot de passe" style="flex:1;min-width:140px">
+        <input id="pw2" type="password" placeholder="Confirmer" style="flex:1;min-width:140px">
+        <button id="pwBtn" class="btn btn-small">Changer</button>
+      </div>
+      <div id="pwMsg" class="msg"></div></div>`;
   renderSquadRows();
   renderTrainRows();
   wireScout();
@@ -876,6 +884,17 @@ async function renderSquad(){
     else { msg($("dailyMsg"), "Déjà récupéré aujourd'hui. Reviens demain !", "error"); }
   });
   wireComparator();
+  if($("pwBtn")) $("pwBtn").addEventListener("click", async()=>{
+    const a=$("pw1").value, b=$("pw2").value;
+    if(a.length<6){ msg($("pwMsg"), "Le mot de passe doit faire au moins 6 caractères.", "error"); return; }
+    if(a!==b){ msg($("pwMsg"), "Les deux mots de passe ne correspondent pas.", "error"); return; }
+    const btn=$("pwBtn"); btn.disabled=true; btn.textContent="…";
+    const { error } = await supa.auth.updateUser({ password: a });
+    btn.disabled=false; btn.textContent="Changer";
+    if(error){ msg($("pwMsg"), error.message, "error"); return; }
+    $("pw1").value=""; $("pw2").value="";
+    msg($("pwMsg"), "✓ Mot de passe modifié. Note-le en lieu sûr !", "info");
+  });
   $("saveLineup").addEventListener("click", saveLineup);
   if($("tacticSel")) $("tacticSel").addEventListener("change", ()=>{
     const b=tacticBeats(+$("tacticSel").value);
