@@ -1729,10 +1729,11 @@ async function loadCL(){
       html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">Tour ${ri}</div>`;
       rm.sort((a,b)=>a.pair_idx-b.pair_idx).forEach(m=>{
         const A=tmap[m.home_team_id], B=tmap[m.away_team_id];
-        const aw=m.home_score>m.away_score;
-        html+=`<div class="match"><span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
-          <span class="score">${m.home_score} – ${m.away_score}</span>
-          <span class="side away ${!aw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`;
+        const done=m.played, aw=done&&m.home_score>m.away_score;
+        const sc = done ? `${m.home_score} – ${m.away_score}` : '<span style="color:var(--muted);font-size:12px">demain</span>';
+        html+=`<div class="match ${done?'match-link':''}" ${done?`data-match="${m.id}" style="cursor:pointer"`:''}><span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
+          <span class="score">${sc}</span>
+          <span class="side away ${done&&!aw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`;
       });
       html+=`</div>`;
     });
