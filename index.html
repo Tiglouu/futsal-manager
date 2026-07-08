@@ -1939,6 +1939,12 @@ async function renderHall(){
     const key=r=>r.season+'|'+r.category+'|'+(r.winner_name||'');
     const have=new Set(rows.map(key));
     extra.forEach(e=>{ if(!have.has(key(e))){ rows.push(e); have.add(key(e)); } });
+    // Champions des ligues déjà terminées cette saison
+    try{
+      const { data:champs } = await supa.rpc("league_champions");
+      (champs||[]).forEach(c=>{ const e={season:c.season,category:c.category,title:c.title,winner_name:c.winner_name,flag_code:c.flag_code,_live:true};
+        if(!have.has(key(e))){ rows.push(e); have.add(key(e)); } });
+    }catch(e){}
   }catch(e){}
   if(!rows.length){
     el.innerHTML=`<div class="card"><h2 style="font-size:22px;margin-bottom:6px">🏛️ Panthéon</h2>
