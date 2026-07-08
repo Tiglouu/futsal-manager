@@ -47,6 +47,9 @@
   .season-clock{padding:7px 20px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--panel);text-align:center;font-family:'Space Mono',monospace}
   .season-clock b{color:var(--orange)}
   .badge{display:inline-block;background:#ff4444;color:#fff;font-size:10px;font-weight:700;line-height:1;border-radius:9px;padding:2px 5px;margin-left:5px;vertical-align:middle;min-width:8px;text-align:center}
+  .notif-bar{padding:9px 20px;font-size:13px;background:#1e3a5f;color:#cfe6ff;border-bottom:1px solid #2b4d78;text-align:center;cursor:pointer}
+  .notif-bar b{color:#fff}
+  .notif-bar:hover{background:#244771}
   .bkt-wrap{display:flex;gap:16px;overflow-x:auto;padding:4px 0 10px}
   .bkt-col{flex:0 0 auto;min-width:190px;display:flex;flex-direction:column}
   .bkt-round{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:13px;color:var(--muted);text-align:center;margin-bottom:8px}
@@ -233,12 +236,13 @@
       <button id="logoutBtn" class="logout">Quitter</button></div>
   </div>
   <div id="seasonClock" class="season-clock"></div>
+  <div id="notifBar" class="notif-bar hidden"></div>
   <div class="nav" id="nav">
     <button class="active" data-tab="team">Équipe</button>
     <button data-tab="league">Championnat</button>
     <button data-tab="agenda">Agenda</button>
     <button data-tab="selection">Sélections</button>
-    <button data-tab="monde">Monde</button>
+    <button data-tab="monde">Monde<span id="mondeBadge" class="badge hidden"></span></button>
     <button data-tab="hall">Panthéon</button>
     <button data-tab="players">Joueurs actifs</button>
     <button data-tab="bdor">Ballon d'Or</button>
@@ -308,7 +312,7 @@ function flag(code,h){
 
 let supa=null, myTeam=null, myTeams=[], activeTeamId=null, myChampId=null, myUserId=null, myPseudo="manager", currentTab="squad";
 let chatChannel=null, chatPollTimer=null, auctionTimer=null, selectionTimer=null, selRefreshTimer=null;
-let gameSeason=1, gameYear=2025, gameSeasonStart=null, clockTimer=null, chatBadgeTimer=null, presenceTimer=null;
+let gameSeason=1, gameYear=2025, gameSeasonStart=null, clockTimer=null, chatBadgeTimer=null, presenceTimer=null, compBadgeTimer=null;
 let squadStarters=new Set(), squadList=[];
 const TACTICS=["Pressing haut","Bloc bas","Jeu de position","Contre-attaque","Power play","Rotation"];
 function tacticBeats(i){ return [TACTICS[(i+1)%6], TACTICS[(i+2)%6]]; }
@@ -354,6 +358,35 @@ function markChatRead(){
   if(!myUserId) return;
   try{ localStorage.setItem('fm_chat_read_'+myUserId, new Date().toISOString()); }catch(e){}
   const b=$("chatBadge"); if(b) b.classList.add("hidden");
+}
+async function updateNotifBar(){
+  const bar=$("notifBar"); if(!bar||!myUserId) return;
+  try{
+    const { count } = await supa.from("national_selections").select("country_code",{count:'exact',head:true}).eq("coach_user_id", myUserId);
+    if(!count || count===0){
+      bar.innerHTML=`🌍 Tu n'entraînes aucune <b>sélection nationale</b> — choisis-en une à diriger ! <b>→ Sélections</b>`;
+      bar.classList.remove("hidden");
+      bar.onclick=()=>switchTab("selection");
+    } else bar.classList.add("hidden");
+  }catch(e){}
+}
+async function updateMondeBadge(){
+  const b=$("mondeBadge"); if(!b||!myUserId||!myTeam) return;
+  try{
+    const zone=countryZone(myTeam.country_code);
+    const gsR=await supa.from("game_state").select("current_season").eq("id",1).single();
+    const cs=gsR.data?gsR.data.current_season:1;
+    const { data } = await supa.from("competitions").select("id").eq("type","champions_league").eq("zone",zone).eq("season",cs).limit(1);
+    const cl=(data&&data[0])?data[0].id:null;
+    let seen; try{ seen=localStorage.getItem('fm_cl_seen_'+myUserId); }catch(e){}
+    if(cl && cl!==seen){ b.classList.remove("hidden"); } else b.classList.add("hidden");
+    b._clId=cl;
+  }catch(e){}
+}
+function markMondeSeen(){
+  const b=$("mondeBadge"); if(!b) return;
+  if(b._clId){ try{ localStorage.setItem('fm_cl_seen_'+myUserId, b._clId); }catch(e){} }
+  b.classList.add("hidden");
 }
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -675,6 +708,9 @@ async function afterLogin(){
   if(!clockTimer){ updateClock(); clockTimer=setInterval(updateClock,1000); }
   updateChatBadge();
   if(!chatBadgeTimer) chatBadgeTimer=setInterval(updateChatBadge, 30000);
+  updateNotifBar();
+  updateMondeBadge();
+  if(!compBadgeTimer) compBadgeTimer=setInterval(()=>{ updateMondeBadge(); updateNotifBar(); }, 45000);
   try{ await supa.rpc("ping_presence"); }catch(e){}
   if(!presenceTimer) presenceTimer=setInterval(()=>{ try{ supa.rpc("ping_presence"); }catch(e){} }, 60000);
   await refreshMyTeam();
@@ -758,6 +794,7 @@ function showSub(group, which){
     document.querySelectorAll('#tab-monde .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='monde:'+which));
     ["leagues","cl","coupes","gazette"].forEach(s=>$("tab-"+s).classList.toggle("hidden", s!==which));
     ({leagues:renderLeaguesList, cl:renderCL, coupes:renderMondeCups, gazette:renderGazette}[which])();
+    if(which==="cl") markMondeSeen();
   } else {
     subMarket=which;
     document.querySelectorAll('#tab-market .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='market:'+which));
@@ -939,12 +976,16 @@ function formHtml(form){
   const col={V:'var(--green)',N:'#c9a227',D:'var(--danger)'};
   return '<span style="display:inline-flex;gap:2px">'+form.map(r=>`<span title="${r}" style="width:14px;height:14px;border-radius:3px;background:${col[r]||'var(--line)'};color:#0d1a13;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${r}</span>`).join('')+'</span>';
 }
-function tableHtml(rows, myId){
+function tableHtml(rows, myId, division){
+  const d1 = (division==null || division===1);
   let h=`<table><thead><tr><th class="rank"></th><th class="left">Équipe</th>
     <th>J</th><th class="hide">G</th><th class="hide">N</th><th class="hide">P</th><th class="hide">Diff</th><th class="hide">Forme</th><th>Pts</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const me=myId&&r.team.id===myId, d=r.bp-r.bc;
-    let zone=""; if(rows.length>2){ if(i<2) zone="qualif"; else if(i===rows.length-1) zone="releg"; }
+    let zone=""; if(rows.length>2){
+      if(d1){ if(i<2) zone="qualif"; else if(i===rows.length-1) zone="releg"; }
+      else   { if(i===0) zone="qualif"; else if(i===rows.length-1) zone="releg"; }
+    }
     h+=`<tr class="${me?'me ':''}${zone}"><td class="num rank">${i+1}</td>
       <td class="left"><div class="tname team-link" data-team="${r.team.id}">${flag(r.team.country_code,16)}<span>${esc(r.team.name)}</span></div></td>
       <td class="num">${r.pj}</td><td class="num hide">${r.g}</td><td class="num hide">${r.n}</td><td class="num hide">${r.p}</td>
@@ -952,7 +993,7 @@ function tableHtml(rows, myId){
   });
   h+=`</tbody></table>
     <div style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
-      <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;margin-right:5px;vertical-align:middle"></span>Qualifié Ligue des champions</span>
+      <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;margin-right:5px;vertical-align:middle"></span>${d1?'Qualifié Ligue des champions':'Promotion en D1'}</span>
       <span><span style="display:inline-block;width:9px;height:9px;background:var(--danger);border-radius:2px;margin-right:5px;vertical-align:middle"></span>Relégation</span></div>`;
   return h;
 }
@@ -965,7 +1006,9 @@ async function renderLeague(){
   const rows=computeTable(teams||[], played||[]);
   const { data:rem } = await supa.from("matches").select("id").eq("championship_id", myChampId).eq("played", false).limit(1);
   const over=!rem||rem.length===0;
-  let html=`<div class="card"><h3 style="font-size:18px;margin-bottom:12px">Classement</h3>${tableHtml(rows, myTeam.id)}`;
+  const { data:champInfo } = await supa.from("championships").select("division").eq("id", myChampId).single();
+  const myDiv = champInfo ? champInfo.division : 1;
+  let html=`<div class="card"><h3 style="font-size:18px;margin-bottom:12px">Classement${myDiv>1?' · D'+myDiv:''}</h3>${tableHtml(rows, myTeam.id, myDiv)}`;
   const myPos=rows.findIndex(r=>r.team.id===myTeam.id)+1;
   if(myTeam.objective_rank){
     const ok=myPos>0 && myPos<=myTeam.objective_rank;
@@ -1702,7 +1745,7 @@ async function openLeague(champId){
   el.innerHTML=`<div class="back" id="backLeagues">← Toutes les ligues</div>
     <div class="card"><div class="team-hero" style="gap:12px">${flag(champ.country_code,34)}
       <div><h2 style="font-size:24px">${esc(champ.country_name)}</h2><div class="meta">Division ${champ.division} · Saison ${champ.season}</div></div></div></div>
-    <div class="card"><h3 style="font-size:17px;margin-bottom:10px">Classement</h3>${tableHtml(rows, myTeam?myTeam.id:null)}</div>
+    <div class="card"><h3 style="font-size:17px;margin-bottom:10px">Classement</h3>${tableHtml(rows, myTeam?myTeam.id:null, champ.division)}</div>
     <div class="card"><h3 style="font-size:17px;margin-bottom:10px">Calendrier</h3><div id="leagueCal"></div></div>
     <div class="card"><h3 style="font-size:17px;margin-bottom:6px">Statistiques</h3><div id="leagueScorers"></div></div>`;
   $("backLeagues").addEventListener("click", renderLeaguesList);
@@ -1788,7 +1831,7 @@ async function loadAuctions(){
     const p=pmap[a.player_id]; if(!p) return;
     const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
     html+=`<div class="market-row" data-end="${a.ends_at}"><span class="mk-rating ${cls}">${p.rating}</span>
-      <div class="mk-info"><div class="mk-name">${esc(p.name)}</div>
+      <div class="mk-info"><div class="mk-name">${flag(p.nationality,14)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
         <div class="mk-sub">Meilleure offre : <b style="color:var(--green)">${fmtMoney(a.current_bid)}</b>${a.highest_bidder_name?` (${mine?'toi':esc(a.highest_bidder_name)})`:''}</div></div>
       <button class="btn btn-orange btn-small bid" data-id="${a.id}" data-amt="${next}">Enchérir ${fmtMoney(next)}</button></div>`;
