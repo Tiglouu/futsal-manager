@@ -1991,17 +1991,26 @@ async function loadCL(){
     html+=`<h3 style="font-size:16px;margin:4px 0 10px">Tours de qualification</h3>`;
     rounds.forEach(ri=>{
       const rm=qualMatches.filter(m=>m.round_idx===ri);
-      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">Tour ${ri}</div>`;
+      const allDone=rm.every(m=>m.played);
+      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">${esc(rm[0].round_label||('Tour '+ri))}${allDone?'':' <span style="color:var(--muted);font-size:12px;font-weight:400">· à venir</span>'}</div>`;
       rm.sort((a,b)=>a.pair_idx-b.pair_idx).forEach(m=>{
         const A=tmap[m.home_team_id], B=tmap[m.away_team_id];
-        const done=m.played, aw=done&&m.home_score>m.away_score;
-        const sc = done ? `${m.home_score} – ${m.away_score}` : '<span style="color:var(--muted);font-size:12px">demain</span>';
-        html+=`<div class="match ${done?'match-link':''}" ${done?`data-match="${m.id}" style="cursor:pointer"`:''}><span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span></span>
+        const done=m.played;
+        const aw=done && m.home_score>m.away_score;
+        const bw=done && m.away_score>m.home_score;
+        const sc = done ? `${m.home_score} – ${m.away_score}` : '<span style="color:var(--muted);font-size:12px">à venir</span>';
+        html+=`<div class="match ${done?'match-link':''}" ${done?`data-match="${m.id}" style="cursor:pointer"`:''}>
+          <span class="side ${aw?'me':''}">${flag(A?.country_code,15)}<span class="nm">${esc(A?.name||'?')}</span>${aw?' <span style="color:var(--green);font-size:11px">✓</span>':''}</span>
           <span class="score">${sc}</span>
-          <span class="side away ${done&&!aw?'me':''}"><span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`;
+          <span class="side away ${bw?'me':''}">${bw?'<span style="color:var(--green);font-size:11px">✓</span> ':''}<span class="nm">${esc(B?.name||'?')}</span>${flag(B?.country_code,15)}</span></div>`;
       });
       html+=`</div>`;
     });
+    const byes=(cts||[]).filter(t=>t.group_name==='BYE');
+    if(byes.length){
+      html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:6px">Exemptés (qualifiés d'office)</div>
+        <div style="font-size:13px;color:var(--muted)">${byes.map(t=>{const T=tmap[t.team_id];return `${flag(T?.country_code,13)} ${esc(T?.name||'?')}`;}).join(' · ')}</div></div>`;
+    }
   }
   if(groupMatches.length){
     const groups=[...new Set(cts.map(c=>c.group_name))].sort();
