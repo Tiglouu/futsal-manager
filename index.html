@@ -2013,7 +2013,7 @@ async function loadCL(){
     }
   }
   if(groupMatches.length){
-    const groups=[...new Set(cts.map(c=>c.group_name))].sort();
+    const groups=[...new Set(cts.map(c=>c.group_name))].filter(g=>g!=='BYE').sort();
     html+=`<h3 style="font-size:16px;margin:4px 0 10px">Phase de poules</h3>`;
     groups.forEach(g=>{
       const gTeams=cts.filter(c=>c.group_name===g).map(c=>c.team_id);
