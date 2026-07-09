@@ -873,10 +873,7 @@ async function renderSquad(){
   const posOrder={Gardien:0,Fixo:1,Ailier:2,Pivot:3,Universel:4};
   squadList=(players||[]).slice().sort((a,b)=>(posOrder[a.position]-posOrder[b.position])||(b.rating-a.rating));
   const avg=squadList.length?Math.round(squadList.reduce((s,p)=>s+p.rating,0)/squadList.length):0;
-  squadStarters=new Set(squadList.filter(p=>p.is_starter).map(p=>p.id));
-  if(squadStarters.size!==5){
-    squadStarters=new Set(squadList.slice().sort((a,b)=>b.rating-a.rating).slice(0,5).map(p=>p.id));
-  }
+  lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
   el.innerHTML=`<div class="card"><div class="team-hero">${flag(myTeam.country_code,46)}
       <div><h2>${esc(myTeam.name)}</h2><div class="meta">${esc(myTeam.country_name)}</div>
       <span class="pill">Note moy. ${avg}</span><span class="pill">${squadList.length} joueurs</span></div></div></div>
@@ -885,11 +882,13 @@ async function renderSquad(){
     <div id="sponsorBox"></div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px">
-        <h3 style="font-size:18px">Composition <span id="starterCount" style="color:var(--muted);font-size:14px"></span></h3>
+        <h3 style="font-size:18px">Composition</h3>
         <button id="saveLineup" class="btn btn-small">Enregistrer</button>
       </div>
-      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Choisis tes 5 titulaires : ils déterminent la force de ton équipe en match.</p>
-      <div id="squadRows"></div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Place un joueur à chaque poste. Un joueur hors de son poste naturel perd en efficacité, et ta tactique favorise certains postes.</p>
+      <div id="lineupSlots"></div>
+      <div id="lineupInfo" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+      <div id="lineupMsg" class="msg"></div>
     </div>
     <div class="card"><h3 style="font-size:18px;margin-bottom:4px">Entraînement</h3>
       <p style="color:var(--muted);font-size:12px;margin-bottom:10px">+5 max / −3 max par séance selon l'âge (les jeunes progressent mieux). Cooldown de 12 h par joueur.</p>
@@ -953,33 +952,61 @@ async function renderSquad(){
     myTeam.tactic=v; btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveTactic")) btn.textContent="Enregistrer"; },1500);
   });
 }
-function renderSquadRows(){
-  const host=$("squadRows"); if(!host) return;
-  let html="";
-  squadList.forEach(p=>{
-    const on=squadStarters.has(p.id), cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
-    html+=`<div class="player" style="${on?'':'opacity:.55'}">
-      <span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
-      <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
-      <button class="btn btn-small lineup-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>
-    </div>`;
-  });
-  host.innerHTML=html;
-  host.querySelectorAll(".lineup-toggle").forEach(b=>b.addEventListener("click", ()=>toggleStarter(b.dataset.id)));
-  const cnt=$("starterCount"); if(cnt) cnt.textContent=`(${squadStarters.size}/5)`;
+const SLOTS=[["GK","Gardien","🧤"],["FIXO","Fixo","🛡️"],["AIL1","Ailier gauche","⚡"],["AIL2","Ailier droit","⚡"],["PIVOT","Pivot","🎯"]];
+const SLOT_NATURAL={GK:"Gardien",FIXO:"Fixo",AIL1:"Ailier",AIL2:"Ailier",PIVOT:"Pivot"};
+let lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
+function slotFit(position, slot){
+  if(position===SLOT_NATURAL[slot]) return 1.00;
+  if(position==="Universel") return 0.92;
+  if(slot==="GK" || position==="Gardien") return 0.55;
+  return 0.82;
 }
-function toggleStarter(id){
-  if(squadStarters.has(id)) squadStarters.delete(id);
-  else{ if(squadStarters.size>=5){ alert("5 titulaires maximum. Retire un joueur d'abord."); return; } squadStarters.add(id); }
-  renderSquadRows();
+function renderSquadRows(){
+  const host=$("lineupSlots"); if(!host) return;
+  // pré-remplissage depuis la base, sinon meilleurs joueurs par poste
+  if(!Object.values(lineup).some(Boolean)){
+    squadList.forEach(p=>{ if(p.slot && lineup.hasOwnProperty(p.slot) && !lineup[p.slot]) lineup[p.slot]=p.id; });
+    if(!Object.values(lineup).every(Boolean)){
+      const used=new Set(Object.values(lineup).filter(Boolean));
+      SLOTS.forEach(([s])=>{ if(lineup[s]) return;
+        const best=squadList.filter(p=>!used.has(p.id)).sort((a,b)=>b.rating*slotFit(b.position,s)-a.rating*slotFit(a.position,s))[0];
+        if(best){ lineup[s]=best.id; used.add(best.id); } });
+    }
+  }
+  host.innerHTML=SLOTS.map(([s,label,icon])=>{
+    const chosen=Object.entries(lineup).filter(([k,v])=>k!==s).map(([,v])=>v);
+    const opts=squadList.filter(p=>!chosen.includes(p.id))
+      .sort((a,b)=>b.rating*slotFit(b.position,s)-a.rating*slotFit(a.position,s))
+      .map(p=>{ const f=slotFit(p.position,s);
+        const tag=f===1?'✓':f>=0.9?'~':f>=0.8?'!':'✗';
+        return `<option value="${p.id}" ${lineup[s]===p.id?'selected':''}>${tag} ${esc(p.name)} (${p.rating}) · ${p.position}</option>`; }).join('');
+    const p=squadList.find(x=>x.id===lineup[s]);
+    const f=p?slotFit(p.position,s):0;
+    const col=f===1?'var(--green)':f>=0.9?'#c9a227':'var(--danger)';
+    return `<div class="player" style="flex-wrap:wrap;gap:6px">
+      <span style="width:118px;font-size:12px;color:var(--muted)">${icon} ${label}</span>
+      <select class="slotSel" data-slot="${s}" style="flex:1;min-width:150px">${opts}</select>
+      <span style="color:${col};font-size:12px;width:52px;text-align:right">${p?Math.round(f*100)+'%':'—'}</span></div>`;
+  }).join('');
+  host.querySelectorAll(".slotSel").forEach(sel=>sel.addEventListener("change",()=>{
+    lineup[sel.dataset.slot]=sel.value; renderSquadRows();
+  }));
+  // récapitulatif de force
+  let tot=0, warn=0;
+  SLOTS.forEach(([s])=>{ const p=squadList.find(x=>x.id===lineup[s]); if(!p) return;
+    const f=slotFit(p.position,s); tot+=p.rating*f; if(f<0.9) warn++; });
+  const info=$("lineupInfo");
+  if(info) info.innerHTML=`Force du 5 : <b style="color:var(--orange)">${Math.round(tot)}</b>`
+    + (warn?` · <span style="color:var(--danger)">${warn} joueur${warn>1?'s':''} hors de son poste</span>`:` · <span style="color:var(--green)">composition idéale</span>`);
 }
 async function saveLineup(){
-  if(squadStarters.size!==5){ alert("Sélectionne exactement 5 titulaires."); return; }
+  if(!Object.values(lineup).every(Boolean)){ msg($("lineupMsg"),"Remplis les 5 postes.","error"); return; }
   const btn=$("saveLineup"); btn.disabled=true; btn.textContent="…";
-  const { error } = await supa.rpc("set_lineup",{ p_team:myTeam.id, p_ids:[...squadStarters] });
-  btn.disabled=false;
-  if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
-  btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveLineup")) btn.textContent="Enregistrer"; },1500);
+  const { data, error } = await supa.rpc("set_lineup_slots",{
+    p_team:myTeam.id, p_gk:lineup.GK, p_fixo:lineup.FIXO, p_ail1:lineup.AIL1, p_ail2:lineup.AIL2, p_pivot:lineup.PIVOT });
+  btn.disabled=false; btn.textContent="Enregistrer";
+  if(error){ msg($("lineupMsg"), error.message, "error"); return; }
+  msg($("lineupMsg"), data||"Composition enregistrée ✓", "info");
 }
 function wireComparator(){
   const a=$("cmpA"), b=$("cmpB"), out=$("cmpOut");
