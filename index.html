@@ -877,6 +877,7 @@ async function renderSquad(){
   el.innerHTML=`<div class="card"><div class="team-hero">${flag(myTeam.country_code,46)}
       <div><h2>${esc(myTeam.name)}</h2><div class="meta">${esc(myTeam.country_name)}</div>
       <span class="pill">Note moy. ${avg}</span><span class="pill">${squadList.length} joueurs</span></div></div></div>
+    <div id="journalBox"></div>
     <div id="offersBox"></div>
     ${tacticCardHtml()}
     <div id="sponsorBox"></div>
@@ -920,6 +921,7 @@ async function renderSquad(){
   wireScout();
   renderOffersCard();
   renderSponsorCard();
+  renderJournal();
   if($("dailyBtn")) $("dailyBtn").addEventListener("click", async()=>{
     $("dailyBtn").disabled=true;
     const { data, error } = await supa.rpc("daily_reward",{ p_team:myTeam.id });
@@ -1032,6 +1034,88 @@ function wireComparator(){
   };
   a.addEventListener("change", draw); b.addEventListener("change", draw); draw();
 }
+/* ---------- Journal d'accueil : événements + tâches ---------- */
+async function renderJournal(){
+  const box=$("journalBox"); if(!box||!myTeam) return;
+  const events=[], tasks=[];
+  const now=new Date();
+
+  // --- Événements : derniers résultats de ton club
+  try{
+    const { data:ms } = await supa.from("matches")
+      .select("home_team_id,away_team_id,home_score,away_score,matchday")
+      .or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).eq("played",true)
+      .order("matchday",{ascending:false}).limit(3);
+    const oids=[...new Set((ms||[]).map(m=>m.home_team_id===myTeam.id?m.away_team_id:m.home_team_id))];
+    const tmap={}; if(oids.length){ const {data:tt}=await supa.from("teams").select("id,name").in("id",oids); (tt||[]).forEach(t=>tmap[t.id]=t); }
+    (ms||[]).forEach(m=>{
+      const home=m.home_team_id===myTeam.id;
+      const my=home?m.home_score:m.away_score, other=home?m.away_score:m.home_score;
+      const opp=tmap[home?m.away_team_id:m.home_team_id];
+      const icon = my>other?'✅':my<other?'❌':'➖';
+      const word = my>other?'Victoire':my<other?'Défaite':'Nul';
+      events.push(`${icon} ${word} ${my}–${other} contre ${esc(opp?.name||'?')}`);
+    });
+  }catch(e){}
+
+  // --- Événements : titres récents
+  try{
+    const { data:hof } = await supa.from("hall_of_fame").select("category,season").eq("winner_name", myTeam.name).order("season",{ascending:false}).limit(2);
+    (hof||[]).forEach(h=>events.push(`🏆 ${esc(h.category)} remporté (saison ${h.season})`));
+  }catch(e){}
+
+  // --- Tâches : offres en attente
+  try{
+    const { count } = await supa.from("transfer_offers").select("id",{count:'exact',head:true})
+      .eq("to_team",myTeam.id).eq("status","pending").gt("expires_at",now.toISOString());
+    if(count>0) tasks.push({t:`📩 ${count} offre${count>1?'s':''} de transfert à traiter`, go:null});
+  }catch(e){}
+
+  // --- Tâches : contrats expirants
+  const soon=squadList.filter(p=>p.contract_until && p.contract_until<=gameSeason+1);
+  if(soon.length) tasks.push({t:`📄 ${soon.length} contrat${soon.length>1?'s':''} expire${soon.length>1?'nt':''} bientôt — pense à prolonger`, go:null});
+
+  // --- Tâches : composition
+  const noSlot=squadList.filter(p=>p.is_starter && p.slot).length;
+  if(noSlot!==5) tasks.push({t:`🎯 Ta composition n'est pas enregistrée (malus de 5 %)`, go:null});
+
+  // --- Tâches : sponsor
+  try{
+    const { data:me } = await supa.from("teams").select("sponsor_id").eq("id",myTeam.id).single();
+    if(me && !me.sponsor_id) tasks.push({t:`🤝 Aucun sponsor : signe un contrat pour toucher une prime`, go:null});
+  }catch(e){}
+
+  // --- Tâches : sélection nationale
+  try{
+    const { count } = await supa.from("national_selections").select("country_code",{count:'exact',head:true}).eq("coach_user_id", myUserId);
+    if(!count) tasks.push({t:`🌍 Tu n'entraînes aucune sélection nationale`, go:"selection"});
+  }catch(e){}
+
+  // --- Tâche : prochain match
+  try{
+    const { data:up } = await supa.from("matches").select("home_team_id,away_team_id,scheduled_at")
+      .or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).eq("played",false)
+      .not("scheduled_at","is",null).order("scheduled_at").limit(1);
+    if(up && up[0]){
+      const oid = up[0].home_team_id===myTeam.id ? up[0].away_team_id : up[0].home_team_id;
+      const { data:o } = await supa.from("teams").select("name").eq("id",oid).single();
+      const d=new Date(up[0].scheduled_at);
+      const soonTxt = d.toDateString()===now.toDateString() ? "aujourd'hui" : d.toLocaleDateString('fr-FR',{weekday:'long'});
+      events.push(`⏱️ Prochain match ${soonTxt} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} contre ${esc(o?.name||'?')}`);
+    }
+  }catch(e){}
+
+  if(!events.length && !tasks.length){ box.innerHTML=''; return; }
+  box.innerHTML=`<div class="card" style="border-left:3px solid var(--green)">
+    <h3 style="font-size:18px;margin-bottom:8px">📋 Ton journal</h3>
+    ${events.length?`<div style="font-size:13px;line-height:1.9">${events.map(e=>`<div>${e}</div>`).join('')}</div>`:''}
+    ${tasks.length?`<div style="margin-top:${events.length?'10px':'0'};padding-top:${events.length?'10px':'0'};${events.length?'border-top:1px solid var(--line)':''}">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">À FAIRE</div>
+      <div style="font-size:13px;line-height:1.9">${tasks.map((t,i)=>t.go?`<div><a class="jrTask" data-go="${t.go}" style="cursor:pointer">${t.t} →</a></div>`:`<div>${t.t}</div>`).join('')}</div></div>`:''}
+  </div>`;
+  box.querySelectorAll(".jrTask").forEach(a=>a.addEventListener("click",()=>switchTab(a.dataset.go)));
+}
+
 function sponsorLogo(shape, hue, size){
   const s=size||34, c=`hsl(${hue},62%,52%)`, c2=`hsl(${hue},62%,34%)`;
   const shapes={
@@ -1128,7 +1212,9 @@ function renderTrainRows(){
     const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
     let cdTxt="Entraîner";
     if(cd){ const diff=Math.max(0,Math.round((new Date(p.training_until)-new Date())/3600000)); cdTxt=`~${diff} h`; }
-    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+    html+=`<div class="player"><span class="pos">${p.position}</span>
+      <span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}
+        <span style="color:var(--muted);font-size:11px">· 📄 S${p.contract_until||'?'}</span></span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       <button class="btn btn-small train-btn" data-id="${p.id}" ${cd?'disabled':''} style="margin-left:10px;${cd?'background:var(--panel-2);color:var(--muted)':''}">${cdTxt}</button></div>`;
   });
