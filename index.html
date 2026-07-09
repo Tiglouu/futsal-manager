@@ -1995,6 +1995,7 @@ async function loadCL(){
       html+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">${esc(rm[0].round_label||('Tour '+ri))}${allDone?'':' <span style="color:var(--muted);font-size:12px;font-weight:400">· à venir</span>'}</div>`;
       rm.sort((a,b)=>a.pair_idx-b.pair_idx).forEach(m=>{
         const A=tmap[m.home_team_id], B=tmap[m.away_team_id];
+        if(!A||!B) return;   // match invalide : on n'affiche rien
         const done=m.played;
         const aw=done && m.home_score>m.away_score;
         const bw=done && m.away_score>m.home_score;
