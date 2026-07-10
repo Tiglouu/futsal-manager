@@ -1145,18 +1145,21 @@ async function renderSponsorCard(){
   if(cur){
     html+=`<div style="display:flex;align-items:center;gap:12px;margin:8px 0">${sponsorLogo(cur.shape,cur.hue,42)}
       <div><b style="font-size:15px">${esc(cur.name)}</b>
-      <div style="color:var(--muted);font-size:12px">${fmtMoney(cur.payout)} par victoire · Palier ${cur.tier}</div></div></div>`;
-  } else {
-    html+=`<p style="color:var(--muted);font-size:12px;margin-bottom:8px">Aucun sponsor. Signe un contrat : prime immédiate + prime à chaque victoire. (Un seul par saison.)</p>`;
+      <div style="color:var(--muted);font-size:12px">${fmtMoney(cur.payout)} par victoire · Palier ${cur.tier}</div></div></div>
+      <p style="color:var(--muted);font-size:12px;margin-top:6px">Contrat en cours pour la saison. Tu pourras choisir un nouveau sponsor la saison prochaine.</p>
+      <div id="spMsg" class="msg"></div></div>`;
+    box.innerHTML=html;
+    return;
   }
+  html+=`<p style="color:var(--muted);font-size:12px;margin-bottom:8px">Aucun sponsor. Signe un contrat : prime immédiate + prime à chaque victoire. (Un seul par saison.)</p>`;
   html+=`<div style="color:var(--muted);font-size:12px;margin:8px 0 6px">Ton palier maximum : <b style="color:var(--orange)">${maxTier}</b> (note moyenne du 5 : ${Math.round(avg)})</div>`;
   html+=(sps||[]).map(s=>{
-    const lock = s.tier>maxTier, isCur = cur&&cur.id===s.id;
+    const lock = s.tier>maxTier;
     return `<div class="player" style="opacity:${lock?0.45:1}">
       ${sponsorLogo(s.shape,s.hue,30)}
       <span class="pname" style="margin-left:8px">${esc(s.name)}</span>
       <span style="color:var(--muted);font-size:11px;margin-left:auto;text-align:right">${fmtMoney(s.bonus)} à la signature<br>${fmtMoney(s.payout)} / victoire</span>
-      <button class="btn btn-small spBtn" data-sp="${s.id}" ${lock||isCur?'disabled':''} style="margin-left:10px">${isCur?'Actuel':lock?'🔒':'Signer'}</button></div>`;
+      <button class="btn btn-small spBtn" data-sp="${s.id}" ${lock?'disabled':''} style="margin-left:10px">${lock?'🔒':'Signer'}</button></div>`;
   }).join('');
   html+=`<div id="spMsg" class="msg"></div></div>`;
   box.innerHTML=html;
