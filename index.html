@@ -279,6 +279,14 @@
     <div id="flagPreview" class="flag-preview"></div>
     <label>Pays</label><select id="countrySelect"></select>
     <label>Nom de l'équipe</label><input id="teamName" type="text" placeholder="Ex : Les Pumas">
+    <label>Couleurs du club</label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <input type="color" id="newc1" value="#c0392b" title="Couleur 1" style="width:44px;height:34px;border:none;background:none;cursor:pointer">
+      <input type="color" id="newc2" value="#ffffff" title="Couleur 2" style="width:44px;height:34px;border:none;background:none;cursor:pointer">
+      <input type="color" id="newc3" value="#111111" title="Couleur 3" style="width:44px;height:34px;border:none;background:none;cursor:pointer">
+      <input type="color" id="newc4" value="#f1c40f" title="Couleur 4" style="width:44px;height:34px;border:none;background:none;cursor:pointer">
+      <span style="font-size:11px;color:var(--muted);align-self:center">Tu pourras générer/modifier ton maillot ensuite dans Équipe → News.</span>
+    </div>
     <button id="createBtn" class="btn btn-orange">Créer mon équipe</button>
     <div id="createMsg" class="msg"></div>
     <div id="cancelCreate" class="switch hidden"><a>Annuler</a></div>
@@ -307,9 +315,10 @@
   </div>
   <div class="wrap">
     <div id="tab-team">
-      <div class="subnav"><button class="active" data-sub="team:squad">Effectif</button><button data-sub="team:tactics">Tactique</button><button data-sub="team:calendar">Calendrier</button></div>
+      <div class="subnav"><button class="active" data-sub="team:squad">Effectif</button><button data-sub="team:tactics">Tactique</button><button data-sub="team:news">News</button><button data-sub="team:calendar">Calendrier</button></div>
       <div id="tab-squad"></div>
       <div id="tab-tactics" class="hidden"></div>
+      <div id="tab-news" class="hidden"></div>
       <div id="tab-calendar" class="hidden"></div>
     </div>
     <div id="tab-league" class="hidden"></div>
@@ -587,6 +596,60 @@ function playerFace(seed, cc, size){
   ${hairSvg}
   </svg>`;
 }
+/* ============ Maillots (remplace les visages) ============ */
+const KIT_FONTS=['Arial Black, sans-serif','Impact, sans-serif','Georgia, serif','"Trebuchet MS",sans-serif','Verdana,sans-serif','"Times New Roman",serif','Tahoma,sans-serif','"Courier New",monospace','"Palatino Linotype",serif','"Franklin Gothic Medium",sans-serif','"Century Gothic",sans-serif','Rockwell,serif','"Gill Sans",sans-serif','Consolas,monospace','Optima,sans-serif','"Lucida Sans",sans-serif','Garamond,serif','"Segoe UI",sans-serif','Cambria,serif','"Arial Narrow",sans-serif'];
+const KIT_NUMFONTS=['Arial Black,sans-serif','Impact,sans-serif','"Courier New",monospace','Georgia,serif','Verdana,sans-serif','Rockwell,serif','Consolas,monospace','"Franklin Gothic Medium",sans-serif','"Century Gothic",sans-serif','Tahoma,sans-serif'];
+const KIT_PATTERNS=['solid','stripes','hoops','sash','halves','shoulders','pinstripe','chevron'];
+function kitLum(hex){ const n=parseInt(hex.slice(1),16); return (0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255; }
+function kitInk(hex){ return kitLum(hex)>0.58?'#141414':'#f7f7f7'; }
+function kitNum(player){ if(player&&player.number) return player.number; return (faceHash(String(player&&player.id||'x'))%98)+1; }
+function kitLastName(name){ const p=String(name||'').trim().split(/\s+/); return (p[p.length-1]||name||'').toUpperCase(); }
+function playerKit(player, team, size, opts){
+  opts=opts||{}; const s=size||46;
+  const uid='k'+(faceHash(String(player&&player.id||'x')+'|'+(team&&team.id||''))>>>0).toString(36);
+  const num=kitNum(player), name=kitLastName(player&&player.name);
+  // maillot national : drapeau
+  if(opts.national){ const cc=(player&&player.nationality)||opts.cc;
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${s}px;height:${s}px;border-radius:10px;background:#f0f3f5;overflow:hidden;flex:0 0 auto">${flag(cc, Math.round(s*0.62))}</span>`; }
+  const hasKit = team && team.color1 && team.kit_season;
+  let c1,c2,c3,c4,pattern,font,numfont;
+  if(!hasKit){ c1='#f2f2f2'; c2='#e4e4e4'; c3='#d0d0d0'; c4='#c8c8c8'; pattern='solid'; font=KIT_FONTS[0]; numfont=KIT_NUMFONTS[0]; }
+  else { c1=team.color1; c2=team.color2||shade(c1,0.8); c3=team.color3||'#ffffff'; c4=team.color4||kitInk(c1);
+    pattern=KIT_PATTERNS[(team.kit_pattern||0)%KIT_PATTERNS.length]; font=KIT_FONTS[(team.kit_font||0)%KIT_FONTS.length]; numfont=KIT_NUMFONTS[(team.kit_num_style||0)%KIT_NUMFONTS.length]; }
+  const ink=hasKit?kitInk(c1):'#9aa0a6';
+  const ex=40;
+  const torso=`M28 25 Q40 21 52 25 L54 31 Q55 47 53 63 Q40 66.5 27 63 Q25 47 26 31 Z`;
+  const slL=`M28 25 L14 30 L18 41 L27 34 Z`, slR=`M52 25 L66 30 L62 41 L53 34 Z`;
+  let fill='';
+  const P=(d,f)=>`<path d="${d}" fill="${f}"/>`;
+  if(pattern==='solid')      fill=P(torso,c1);
+  else if(pattern==='stripes')  fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,38,46].map(x=>`<rect x="${x}" y="20" width="4" height="48" fill="${c2}"/>`).join('')}</g>`;
+  else if(pattern==='hoops')    fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,40,50,60].map(y=>`<rect x="24" y="${y}" width="32" height="4" fill="${c2}"/>`).join('')}</g>`;
+  else if(pattern==='sash')     fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M24 30 L56 58 L56 64 L24 36 Z" fill="${c3}"/></g>`;
+  else if(pattern==='halves')   fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><rect x="40" y="20" width="20" height="48" fill="${c2}"/></g>`;
+  else if(pattern==='shoulders')fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M26 26 Q40 22 54 26 L54 33 Q40 29 26 33 Z" fill="${c2}"/></g>`;
+  else if(pattern==='pinstripe')fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,34,38,42,46,50].map(x=>`<rect x="${x}" y="20" width="1.1" height="48" fill="${c3}" opacity="0.6"/>`).join('')}</g>`;
+  else if(pattern==='chevron')  fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M24 40 L40 50 L56 40 L56 45 L40 55 L24 45 Z" fill="${c2}"/></g>`;
+
+  let content='';
+  if(opts.front){
+    content=`<text x="${ex}" y="40" text-anchor="middle" font-family="${font}" font-size="5.5" fill="${ink}" opacity="0.9" font-weight="bold">${esc(opts.sponsor||'')}</text>
+      <text x="${ex}" y="58" text-anchor="middle" font-family="${numfont}" font-size="15" font-weight="bold" fill="${ink}">${num}</text>`;
+  } else if(hasKit){
+    content=`<path id="${uid}arc" d="M28 34 Q40 28 52 34" fill="none"/>
+      <text font-family="${font}" font-size="6" font-weight="bold" fill="${ink}"><textPath href="#${uid}arc" startOffset="50%" text-anchor="middle">${esc(name).slice(0,11)}</textPath></text>
+      <text x="${ex}" y="56" text-anchor="middle" font-family="${numfont}" font-size="19" font-weight="bold" fill="${ink}">${num}</text>`;
+  }
+  return `<svg viewBox="0 0 80 80" width="${s}" height="${s}" style="flex:0 0 auto">
+    <defs><clipPath id="${uid}c"><path d="${torso}"/></clipPath></defs>
+    ${P(slL,c2)}${P(slR,c2)}
+    ${fill}
+    <path d="M34 23 Q40 28 46 23 L44 26 Q40 30 36 26 Z" fill="${c3}"/>
+    <path d="${torso}" fill="none" stroke="${shade(c1,0.7)}" stroke-width="0.6" opacity="0.4"/>
+    ${content}
+  </svg>`;
+}
+
 function ratingClass(r){
   r=+r||0;
   if(r>=108) return 'r-gold';
@@ -755,7 +818,7 @@ async function openTeamModal(teamId){
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
   players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
-    html+=`<div class="player">${playerFace(p.id,p.nationality,34)}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+    html+=`<div class="player">${playerKit(p,t,34)}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
   html+=`<div id="offerMsg" class="msg"></div>`;
@@ -784,7 +847,7 @@ async function openPlayerActionModal(playerId){
 
   // club + stats + trophées
   let club=null;
-  if(p.team_id){ const {data:t}=await supa.from("teams").select("name,country_code").eq("id",p.team_id).single(); club=t; }
+  if(p.team_id){ const {data:t}=await supa.from("teams").select("name,country_code,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").eq("id",p.team_id).single(); club=t; }
   const [gR,aR] = await Promise.all([
     supa.from("match_events").select("id",{count:'exact',head:true}).eq("scorer_id",playerId),
     supa.from("match_events").select("id",{count:'exact',head:true}).eq("assist_id",playerId)
@@ -800,7 +863,7 @@ async function openPlayerActionModal(playerId){
   const conf=Math.round(p.confidence??70), form=Math.round(p.form??70);
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div style="display:flex;gap:12px;align-items:center">${playerFace(p.id,p.nationality,64)}
+      <div style="display:flex;gap:12px;align-items:center">${playerKit(p,club,64)}
       <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${p.position} · ${p.age} ans · <span class="${cls}">Note ${p.rating}</span></div>
       <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">${club?flag(club.country_code,12)+' '+esc(club.name):'Agent libre'}${own?` · 💰 ${fmtMoney(p.salary||0)}/saison · 📄 S${p.contract_until||'?'}`:''}</div></div></div>
@@ -1024,7 +1087,10 @@ async function handleCreateTeam(){
   try{
     const { data, error } = await supa.rpc("register_team",{ p_name:name, p_country_code:code, p_country_name:cname });
     if(error) throw error;
-    if(data) activeTeamId=data;
+    if(data){ activeTeamId=data;
+      const c1=$("newc1").value,c2=$("newc2").value,c3=$("newc3").value,c4=$("newc4").value;
+      try{ await supa.rpc("set_club_colors",{p_team:data,c1,c2,c3,c4}); await supa.rpc("generate_kit",{p_team:data}); }catch(e){}
+    }
     $("cancelCreate").classList.add("hidden");
     await afterLogin();
   }catch(err){ msg($("createMsg"),err.message||"Erreur.","error"); $("createBtn").disabled=false; }
@@ -1057,8 +1123,9 @@ function showSub(group, which){
     document.querySelectorAll('#tab-team .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='team:'+which));
     $("tab-squad").classList.toggle("hidden", which!=="squad");
     $("tab-tactics").classList.toggle("hidden", which!=="tactics");
+    $("tab-news").classList.toggle("hidden", which!=="news");
     $("tab-calendar").classList.toggle("hidden", which!=="calendar");
-    if(which==="squad") renderSquad(); else if(which==="tactics") renderTactics(); else renderCalendar();
+    if(which==="squad") renderSquad(); else if(which==="tactics") renderTactics(); else if(which==="news") renderNews(); else renderCalendar();
   } else if(group==="monde"){
     subMonde=which;
     document.querySelectorAll('#tab-monde .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='monde:'+which));
@@ -1086,12 +1153,11 @@ async function renderSquad(){
   el.innerHTML=`<div class="card"><div class="team-hero">${flag(myTeam.country_code,46)}
       <div><h2>${esc(myTeam.name)}</h2><div class="meta">${esc(myTeam.country_name)}</div>
       <span class="pill">Note moy. ${avg}</span><span class="pill">${squadList.length} joueurs</span></div></div></div>
-    <div id="journalBox"></div>
     <div id="offersBox"></div>
     <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-size:13px;color:var(--muted)">⚙️ La composition et la tactique sont désormais dans l'onglet</span>
-      <button class="btn btn-small" onclick="showSub('team','tactics')">Tactique →</button></div>
-    <div id="sponsorBox"></div>
+      <span style="font-size:13px;color:var(--muted)">⚙️ Tactique, composition, sponsor, journal et style du club sont dans les onglets</span>
+      <button class="btn btn-small" onclick="showSub('team','tactics')">Tactique →</button>
+      <button class="btn btn-small" onclick="showSub('team','news')">News →</button></div>
     <div class="card"><h3 style="font-size:18px;margin-bottom:4px">Entraînement</h3>
       <p style="color:var(--muted);font-size:12px;margin-bottom:10px">+5 max / −3 max par séance selon l'âge (les jeunes progressent mieux). Cooldown de 12 h par joueur.</p>
       <div id="trainRows"></div></div>
@@ -1120,8 +1186,6 @@ async function renderSquad(){
   renderTrainRows();
   wireScout();
   renderOffersCard();
-  renderSponsorCard();
-  renderJournal();
   if($("dailyBtn")) $("dailyBtn").addEventListener("click", async()=>{
     $("dailyBtn").disabled=true;
     const { data, error } = await supa.rpc("daily_reward",{ p_team:myTeam.id });
@@ -1143,7 +1207,77 @@ async function renderSquad(){
   });
 }
 
-/* ---------- Onglet Tactique ---------- */
+/* ---------- Onglet News (sponsor + journal + style du club) ---------- */
+async function renderNews(){
+  const el=$("tab-news"); if(!el) return;
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:tm } = await supa.from("teams").select("color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season,sponsor_id").eq("id",myTeam.id).single();
+  const t=tm||{}; const cur={...myTeam,...t};
+  let sponsorName='SPONSOR';
+  if(t.sponsor_id){ const {data:sp}=await supa.from("sponsors").select("name").eq("id",t.sponsor_id).single(); if(sp) sponsorName=sp.name.toUpperCase(); }
+  const previewPlayer={id:myTeam.id+'-preview', name:(myPseudo||'CAPITAINE'), number:10};
+  const fontOpts=KIT_FONTS.map((f,i)=>`<option value="${i}" ${i===(t.kit_font||0)?'selected':''}>Écriture ${i+1}</option>`).join('');
+  const numOpts=KIT_NUMFONTS.map((f,i)=>`<option value="${i}" ${i===(t.kit_num_style||0)?'selected':''}>Numéro ${i+1}</option>`).join('');
+  const notGen = !t.kit_season;
+
+  el.innerHTML=`
+    <div id="sponsorBox"></div>
+    <div class="card">
+      <h3 style="font-size:18px;margin-bottom:8px">👕 Style du club</h3>
+      ${notGen?`<p style="color:var(--danger);font-size:12px;margin-bottom:8px">Ton maillot est encore blanc. Choisis tes 4 couleurs puis <b>génère</b> le maillot de la saison.</p>`:''}
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:190px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            ${[1,2,3,4].map(i=>`<label style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Couleur ${i}<input type="color" id="kc${i}" value="${cur['color'+i]||['#1a5276','#ffffff','#0e2f44','#f1c40f'][i-1]}" style="width:46px;height:34px;border:none;background:none;cursor:pointer"></label>`).join('')}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--muted)">Écriture du nom<br><select id="kfont">${fontOpts}</select></label>
+            <label style="font-size:12px;color:var(--muted)">Style du numéro<br><select id="knum">${numOpts}</select></label>
+          </div>
+          <div class="row-actions" style="margin-top:6px">
+            <button id="kSaveColors" class="btn btn-small">Enregistrer couleurs & style</button>
+            <button id="kGen" class="btn btn-orange btn-small">🎲 Générer le maillot de la saison</button>
+          </div>
+          <div id="kMsg" class="msg"></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center">
+          <div style="text-align:center"><div id="kPrevBack"></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Dos</div></div>
+          <div style="text-align:center"><div id="kPrevFront"></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Avant</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="journalBox"></div>`;
+
+  renderSponsorCard(); renderJournal();
+
+  const readColors=()=>[1,2,3,4].map(i=>$("kc"+i).value);
+  const previewTeam=()=>{ const c=readColors(); return {id:myTeam.id,color1:c[0],color2:c[1],color3:c[2],color4:c[3],kit_pattern:(t.kit_pattern||0),kit_font:+$("kfont").value,kit_num_style:+$("knum").value,kit_season:(t.kit_season||1)}; };
+  const refreshPrev=()=>{ const pt=previewTeam();
+    $("kPrevBack").innerHTML=playerKit(previewPlayer, pt, 92);
+    $("kPrevFront").innerHTML=playerKit(previewPlayer, pt, 92, {front:true, sponsor:sponsorName}); };
+  refreshPrev();
+  [1,2,3,4].forEach(i=>$("kc"+i).addEventListener("input",refreshPrev));
+  $("kfont").addEventListener("change",refreshPrev); $("knum").addEventListener("change",refreshPrev);
+
+  $("kSaveColors").addEventListener("click", async()=>{
+    const c=readColors(), btn=$("kSaveColors"); btn.disabled=true;
+    let r=await supa.rpc("set_club_colors",{p_team:myTeam.id,c1:c[0],c2:c[1],c3:c[2],c4:c[3]});
+    if(!r.error) r=await supa.rpc("set_kit_style",{p_team:myTeam.id,p_font:+$("kfont").value,p_num:+$("knum").value});
+    btn.disabled=false;
+    if(r.error){ msg($("kMsg"),r.error.message,"error"); return; }
+    msg($("kMsg"),"Couleurs et style enregistrés ✓","info");
+  });
+  $("kGen").addEventListener("click", async()=>{
+    const c=readColors(), btn=$("kGen"); btn.disabled=true; btn.textContent="…";
+    let r=await supa.rpc("set_club_colors",{p_team:myTeam.id,c1:c[0],c2:c[1],c3:c[2],c4:c[3]});
+    if(!r.error) r=await supa.rpc("set_kit_style",{p_team:myTeam.id,p_font:+$("kfont").value,p_num:+$("knum").value});
+    if(!r.error) r=await supa.rpc("generate_kit",{p_team:myTeam.id});
+    btn.disabled=false; btn.textContent="🎲 Générer le maillot de la saison";
+    if(r.error){ msg($("kMsg"),r.error.message,"error"); return; }
+    msg($("kMsg"),"Nouveau maillot généré pour la saison ! 🎉","info");
+    setTimeout(()=>renderNews(),600);
+  });
+}
 async function renderTactics(){
   const el=$("tab-tactics"); if(!el) return;
   el.innerHTML='<div class="loading">Chargement…</div>';
@@ -1971,7 +2105,7 @@ function renderNatRows(isCoach){
   list.forEach(p=>{
     const on=natStarters.has(p.id), cls=ratingClass(p.rating);
     html+=`<div class="player" style="${isCoach&&!on?'opacity:.55':''}">
-      <span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      ${playerKit(p,null,34,{national:true})}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${isCoach?`<button class="btn btn-small nat-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>`:''}</div>`;
   });
@@ -2451,7 +2585,7 @@ async function loadMercato(){
   const host=$("mkList"); if(!host) return;
   host.innerHTML='<div class="loading">Chargement…</div>';
   const search=($("mkSearch").value||"").toLowerCase(), country=$("mkCountry").value;
-  let q=supa.from("teams").select("id,name,country_code").eq("is_bot", true);
+  let q=supa.from("teams").select("id,name,country_code,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").eq("is_bot", true);
   if(country) q=q.eq("country_code", country);
   const { data:bots } = await q.limit(80);
   const ids=(bots||[]).map(b=>b.id); const bmap={}; (bots||[]).forEach(b=>bmap[b.id]=b);
@@ -2464,7 +2598,7 @@ async function loadMercato(){
   let html="";
   list.forEach(p=>{
     const club=bmap[p.team_id], price=p.rating*15000, cls=ratingClass(p.rating);
-    html+=`<div class="market-row">${playerFace(p.id,p.nationality,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+    html+=`<div class="market-row">${playerKit(p,club,40)}<span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,12)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · ${club?flag(club.country_code,12)+' '+esc(club.name):'—'}</div></div>
       <div style="text-align:right"><div class="mk-price">${fmtMoney(price)}</div>
@@ -2504,7 +2638,7 @@ async function loadAuctions(){
   active.forEach(a=>{
     const p=pmap[a.player_id]; if(!p) return;
     const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=ratingClass(p.rating);
-    html+=`<div class="market-row" data-end="${a.ends_at}">${playerFace(p.id,p.nationality,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+    html+=`<div class="market-row" data-end="${a.ends_at}">${playerKit(p,null,40)}<span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,14)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
         <div class="mk-sub">Meilleure offre : <b style="color:var(--green)">${fmtMoney(a.current_bid)}</b>${a.highest_bidder_name?` (${mine?'toi':esc(a.highest_bidder_name)})`:''}</div></div>
