@@ -483,82 +483,110 @@ function playerFace(seed, cc, size){
   const h0=faceHash(String(seed||'x')+'|'+(cc||''));
   const rng=faceRng(h0); const uid='f'+h0.toString(36);
   const skin=FACE_SKIN[facePickW(FACE_SKINW[zone]||FACE_SKINW.default, rng())];
-  const skinL=shade(skin,1.10), skinD=shade(skin,0.82), skinDD=shade(skin,0.66);
-  const lip=faceMix(skin,'#a83b39',0.42), lipD=shade(lip,0.8);
+  const skinL=shade(skin,1.12), skinLL=shade(skin,1.22), skinD=shade(skin,0.84), skinDD=shade(skin,0.68), skinS=shade(skin,0.6);
+  const blush=faceMix(skin,'#e0776a',0.30);
+  const lip=faceMix(skin,'#a5423f',0.5), lipL=faceMix(lip,'#ffffff',0.22), lipD=shade(lip,0.78);
   const hair=FACE_HAIR[facePickW(FACE_HAIRW[zone]||FACE_HAIRW.default, rng())];
-  const hairL=shade(hair,1.4), hairD=shade(hair,0.7);
+  const hairL=shade(hair,1.5), hairLL=shade(hair,1.85), hairD=shade(hair,0.66);
   const irisPal=['#5b3a1e','#3a2717','#6b4a2a','#7a5a2e','#4a6b45','#39687a','#5f7f9c'];
   const iris=irisPal[facePickW(zone==='Europe'?[20,14,16,10,12,12,16]:[42,30,16,6,2,2,2], rng())];
-  const jersey=['#c0392b','#2471a3','#1e8449','#7d3c98','#b7950b','#34495e','#d35400','#16a085'][Math.floor(rng()*8)];
+  const irisL=shade(iris,1.45), irisD=shade(iris,0.6);
+  const jersey=['#c0392b','#2471a3','#1e8449','#7d3c98','#b7950b','#34495e','#d35400','#16a085','#2c3e50'][Math.floor(rng()*9)];
+  const bgTop='#f3f6f8', bgBot='#dfe6ea';
 
-  const ex=40, ey=42, hw=21, hh=24;
-  const jaw=hw+(rng()*2.4-1.2), chin=hh+(rng()*3-0.5), fore=ey-hh-4;
-  const headPath=`M${ex-jaw} ${ey-4} C${ex-jaw} ${fore+6} ${ex-13} ${fore} ${ex} ${fore} C${ex+13} ${fore} ${ex+jaw} ${fore+6} ${ex+jaw} ${ey-4} C${ex+jaw} ${ey+9} ${ex+jaw-3} ${ey+chin-7} ${ex} ${ey+chin} C${ex-jaw+3} ${ey+chin-7} ${ex-jaw} ${ey+9} ${ex-jaw} ${ey-4}Z`;
+  const ex=40, ey=42, hw=20.5, hh=24;
+  const jaw=hw+(rng()*2.2-1.1), chin=hh+(rng()*3-0.5), fore=ey-hh-4;
+  const headPath=`M${ex-jaw} ${ey-5} C${ex-jaw-0.5} ${fore+7} ${ex-13} ${fore-1} ${ex} ${fore-1} C${ex+13} ${fore-1} ${ex+jaw+0.5} ${fore+7} ${ex+jaw} ${ey-5} C${ex+jaw} ${ey+8} ${ex+jaw-2.5} ${ey+chin-8} ${ex} ${ey+chin} C${ex-jaw+2.5} ${ey+chin-8} ${ex-jaw} ${ey+8} ${ex-jaw} ${ey-5}Z`;
 
-  const eyeY=ey-1, exl=ex-8, exr=ex+8;
-  const eye=(cx)=>`<g>
-    <path d="M${cx-4} ${eyeY} Q${cx} ${eyeY-3.1} ${cx+4} ${eyeY} Q${cx} ${eyeY+2.6} ${cx-4} ${eyeY}Z" fill="#f4f2ee"/>
-    <circle cx="${cx}" cy="${eyeY}" r="2.15" fill="${iris}"/><circle cx="${cx}" cy="${eyeY}" r="0.95" fill="#141414"/>
-    <circle cx="${cx-0.7}" cy="${eyeY-0.8}" r="0.5" fill="#fff"/>
-    <path d="M${cx-4} ${eyeY} Q${cx} ${eyeY-3.1} ${cx+4} ${eyeY}" fill="none" stroke="${skinDD}" stroke-width="0.8" stroke-linecap="round"/>
-    <path d="M${cx-4} ${eyeY+0.4} Q${cx} ${eyeY+2.6} ${cx+4} ${eyeY+0.4}" fill="none" stroke="${skinD}" stroke-width="0.5" opacity="0.6"/></g>`;
-  const browT=1.3+rng()*1.4, browA=(rng()*2-1);
-  const brow=(x1)=>`<path d="M${x1} ${eyeY-5+browA} Q${x1+3.5} ${eyeY-6.3} ${x1+7} ${eyeY-5-browA}" fill="none" stroke="${hairD}" stroke-width="${browT}" stroke-linecap="round"/>`;
-  const noseT=Math.floor(rng()*3);
-  const nose = noseT===0 ? `<path d="M${ex-0.5} ${ey-1} Q${ex-2.6} ${ey+6} ${ex} ${ey+7.4} Q${ex+2.6} ${ey+6} ${ex+0.5} ${ey-1}" fill="none" stroke="${skinD}" stroke-width="1" stroke-linecap="round"/><path d="M${ex-2.4} ${ey+6.8} Q${ex} ${ey+8.4} ${ex+2.4} ${ey+6.8}" fill="none" stroke="${skinDD}" stroke-width="0.8" opacity="0.7"/>`
-             : noseT===1 ? `<path d="M${ex} ${ey} L${ex-2.2} ${ey+7} Q${ex} ${ey+8.8} ${ex+2.2} ${ey+7}Z" fill="${skinD}" opacity="0.55"/>`
-             : `<path d="M${ex-0.4} ${ey} Q${ex-3} ${ey+7} ${ex} ${ey+8} Q${ex+3} ${ey+7} ${ex+0.4} ${ey}" fill="none" stroke="${skinD}" stroke-width="1.1" stroke-linecap="round"/>`;
-  const mouthT=Math.floor(rng()*3), my=ey+13.5;
-  const mouth = `<path d="M${ex-5.5} ${my} Q${ex} ${my-1.6} ${ex+5.5} ${my} Q${ex} ${my+(mouthT===2?0.6:2.4)} ${ex-5.5} ${my}Z" fill="${lip}"/>
-    <path d="M${ex-5.5} ${my} Q${ex} ${my+(mouthT===0?1.2:2)} ${ex+5.5} ${my}" fill="none" stroke="${lipD}" stroke-width="0.7"/>`;
+  const eyeY=ey-1, exl=ex-8, exr=ex+8, ew=4.2, eh=2.9;
+  const eye=(cx,cid)=>`<g>
+    <ellipse cx="${cx}" cy="${eyeY+0.3}" rx="5" ry="3.4" fill="${skinD}" opacity="0.22"/>
+    <path d="M${cx-ew} ${eyeY} Q${cx} ${eyeY-3.4} ${cx+ew} ${eyeY} Q${cx} ${eyeY+eh} ${cx-ew} ${eyeY}Z" fill="#f7f5f0"/>
+    <clipPath id="${cid}"><path d="M${cx-ew} ${eyeY} Q${cx} ${eyeY-3.4} ${cx+ew} ${eyeY} Q${cx} ${eyeY+eh} ${cx-ew} ${eyeY}Z"/></clipPath>
+    <g clip-path="url(#${cid})">
+      <circle cx="${cx}" cy="${eyeY-0.1}" r="2.5" fill="url(#${uid}i)"/>
+      <circle cx="${cx}" cy="${eyeY-0.1}" r="2.5" fill="none" stroke="${irisD}" stroke-width="0.5"/>
+      <circle cx="${cx}" cy="${eyeY-0.1}" r="1.05" fill="#120f0d"/>
+      <circle cx="${cx-0.8}" cy="${eyeY-1}" r="0.6" fill="#fff"/><circle cx="${cx+0.7}" cy="${eyeY+0.5}" r="0.32" fill="#fff" opacity="0.7"/>
+    </g>
+    <path d="M${cx-ew} ${eyeY} Q${cx} ${eyeY-3.4} ${cx+ew} ${eyeY}" fill="none" stroke="${skinS}" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M${cx-ew+0.5} ${eyeY-1.6} Q${cx} ${eyeY-4.4} ${cx+ew-0.5} ${eyeY-1.6}" fill="none" stroke="${skinD}" stroke-width="0.5" opacity="0.5"/>
+    <path d="M${cx-ew+0.5} ${eyeY+0.5} Q${cx} ${eyeY+eh} ${cx+ew-0.5} ${eyeY+0.5}" fill="none" stroke="${skinD}" stroke-width="0.45" opacity="0.55"/></g>`;
+  const browT=1.3+rng()*1.3, browA=(rng()*2-1);
+  const brow=(x1)=>`<path d="M${x1} ${eyeY-5.2+browA} Q${x1+3.6} ${eyeY-6.6} ${x1+7.2} ${eyeY-5.2-browA}" fill="none" stroke="${hairD}" stroke-width="${browT}" stroke-linecap="round"/>`;
 
-  // ---- cheveux ----
+  const nose=`<path d="M${ex-0.7} ${ey-1.5} L${ex-0.9} ${ey+5}" stroke="${skinLL}" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/>
+    <path d="M${ex-0.6} ${ey} Q${ex-2.8} ${ey+6.2} ${ex} ${ey+7.6} Q${ex+2.8} ${ey+6.2} ${ex+0.6} ${ey}" fill="none" stroke="${skinD}" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M${ex-2.7} ${ey+6.6} Q${ex-1.4} ${ey+7.8} ${ex-0.4} ${ey+7}" fill="none" stroke="${skinDD}" stroke-width="0.8" opacity="0.7"/>
+    <path d="M${ex+2.7} ${ey+6.6} Q${ex+1.4} ${ey+7.8} ${ex+0.4} ${ey+7}" fill="none" stroke="${skinDD}" stroke-width="0.8" opacity="0.7"/>`;
+  const smile=rng()<0.5, my=ey+13.5;
+  const mouth=`<path d="M${ex-6} ${my-0.5} Q${ex-3} ${my-2.2} ${ex} ${my-1} Q${ex+3} ${my-2.2} ${ex+6} ${my-0.5} Q${ex+3} ${my+0.4} ${ex} ${my} Q${ex-3} ${my+0.4} ${ex-6} ${my-0.5}Z" fill="${lip}"/>
+    <path d="M${ex-6} ${my-0.5} Q${ex} ${my+(smile?3.4:2.6)} ${ex+6} ${my-0.5} Q${ex} ${my+0.6} ${ex-6} ${my-0.5}Z" fill="${lip}"/>
+    <path d="M${ex-4} ${my+1.4} Q${ex} ${my+(smile?2.6:2)} ${ex+4} ${my+1.4}" fill="none" stroke="${lipL}" stroke-width="0.7" opacity="0.7"/>
+    <path d="M${ex-6} ${my-0.5} Q${ex} ${my+0.8} ${ex+6} ${my-0.5}" fill="none" stroke="${lipD}" stroke-width="0.7"/>`;
+
   let hairSvg='', hairBack='';
   const H=(d,f)=>`<path d="${d}" fill="${f||`url(#${uid}h)`}"/>`;
-  const styles=['bald','buzz','short','side','curly','afro','waves','long','recede','fade','cornrows'];
+  const styles=['bald','buzz','short','side','curly','afro','waves','long','recede','fade','cornrows','quiff'];
   const style=styles[Math.floor(rng()*styles.length)];
-  if(style==='afro'){ hairBack=`<circle cx="${ex}" cy="${ey-9}" r="25" fill="url(#${uid}h)"/><circle cx="${ex}" cy="${ey-9}" r="25" fill="${hairD}" opacity="0.25"/>`; }
-  if(style==='long'){ hairBack=`<path d="M${ex-jaw-3} ${ey+18} Q${ex-jaw-5} ${fore+2} ${ex} ${fore-3} Q${ex+jaw+5} ${fore+2} ${ex+jaw+3} ${ey+18} Q${ex+jaw-1} ${ey+6} ${ex+jaw-2} ${ey-8} Q${ex} ${fore+4} ${ex-jaw+2} ${ey-8} Q${ex-jaw+1} ${ey+6} ${ex-jaw-3} ${ey+18}Z" fill="url(#${uid}h)"/>`; }
-  if(style==='buzz')   hairSvg=H(`M${ex-jaw} ${ey-7} Q${ex} ${fore-1} ${ex+jaw} ${ey-7} Q${ex} ${ey-hh+1} ${ex-jaw} ${ey-7}Z`);
-  if(style==='short')  hairSvg=H(`M${ex-jaw-1} ${ey-3} Q${ex-jaw-2} ${fore-3} ${ex} ${fore-4} Q${ex+jaw+2} ${fore-3} ${ex+jaw+1} ${ey-3} Q${ex+jaw-5} ${ey-13} ${ex} ${ey-13} Q${ex-jaw+5} ${ey-13} ${ex-jaw-1} ${ey-3}Z`);
-  if(style==='side')   hairSvg=H(`M${ex-jaw-1} ${ey-4} Q${ex-jaw} ${fore-3} ${ex+5} ${fore-3} Q${ex+jaw+3} ${fore+1} ${ex+jaw} ${ey-6} Q${ex+3} ${ey-15} ${ex-7} ${ey-13} Q${ex-jaw+2} ${ey-12} ${ex-jaw-1} ${ey-4}Z`);
-  if(style==='recede') hairSvg=H(`M${ex-jaw} ${ey-4} Q${ex-jaw-1} ${fore+2} ${ex-7} ${fore+2} Q${ex-13} ${ey-9} ${ex-jaw} ${ey-4}Z M${ex+jaw} ${ey-4} Q${ex+jaw+1} ${fore+2} ${ex+7} ${fore+2} Q${ex+13} ${ey-9} ${ex+jaw} ${ey-4}Z`);
-  if(style==='fade')   hairSvg=H(`M${ex-jaw+2} ${ey-9} Q${ex} ${fore} ${ex+jaw-2} ${ey-9} Q${ex} ${ey-hh+2} ${ex-jaw+2} ${ey-9}Z`);
-  if(style==='curly')  hairSvg=`<g fill="url(#${uid}h)"><circle cx="${ex-14}" cy="${ey-15}" r="7.5"/><circle cx="${ex-5}" cy="${ey-20}" r="8.5"/><circle cx="${ex+6}" cy="${ey-19}" r="8.5"/><circle cx="${ex+15}" cy="${ey-13}" r="7.5"/><circle cx="${ex-18}" cy="${ey-7}" r="5.5"/><circle cx="${ex+18}" cy="${ey-7}" r="5.5"/></g>`;
-  if(style==='waves')  hairSvg=H(`M${ex-jaw} ${ey-6} Q${ex-14} ${fore-1} ${ex-7} ${ey-11} Q${ex} ${fore-2} ${ex+7} ${ey-11} Q${ex+14} ${fore-1} ${ex+jaw} ${ey-6} Q${ex} ${ey-14} ${ex-jaw} ${ey-6}Z`);
-  if(style==='cornrows') hairSvg=`<g stroke="url(#${uid}h)" stroke-width="2.4" fill="none" stroke-linecap="round">${[-12,-7,-2,3,8,13].map(dx=>`<path d="M${ex+dx} ${ey-6} Q${ex+dx*0.8} ${fore} ${ex+dx*0.6} ${ey-13}"/>`).join('')}</g>`;
+  const gloss=`<path d="M${ex-11} ${fore+3} Q${ex-4} ${fore-1} ${ex+3} ${fore+2}" fill="none" stroke="${hairLL}" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>`;
+  if(style==='afro'){ hairBack=`<circle cx="${ex}" cy="${ey-10}" r="24.5" fill="url(#${uid}h)"/><circle cx="${ex-8}" cy="${ey-16}" r="8" fill="${hairLL}" opacity="0.25"/>`; }
+  if(style==='long'){ hairBack=`<path d="M${ex-jaw-3} ${ey+20} Q${ex-jaw-5} ${fore+1} ${ex} ${fore-4} Q${ex+jaw+5} ${fore+1} ${ex+jaw+3} ${ey+20} Q${ex+jaw-1} ${ey+6} ${ex+jaw-2} ${ey-9} Q${ex} ${fore+3} ${ex-jaw+2} ${ey-9} Q${ex-jaw+1} ${ey+6} ${ex-jaw-3} ${ey+20}Z" fill="url(#${uid}h)"/>`; }
+  if(style==='buzz')   hairSvg=H(`M${ex-jaw} ${ey-8} Q${ex} ${fore-1} ${ex+jaw} ${ey-8} Q${ex} ${ey-hh+1} ${ex-jaw} ${ey-8}Z`)+`<path d="M${ex-jaw} ${ey-8} Q${ex} ${fore-1} ${ex+jaw} ${ey-8}" fill="none" stroke="${skinD}" stroke-width="0.6" opacity="0.4"/>`;
+  if(style==='short')  hairSvg=H(`M${ex-jaw-1} ${ey-4} Q${ex-jaw-2} ${fore-4} ${ex} ${fore-5} Q${ex+jaw+2} ${fore-4} ${ex+jaw+1} ${ey-4} Q${ex+jaw-5} ${ey-14} ${ex} ${ey-13.5} Q${ex-jaw+5} ${ey-14} ${ex-jaw-1} ${ey-4}Z`)+gloss;
+  if(style==='side')   hairSvg=H(`M${ex-jaw-1} ${ey-5} Q${ex-jaw} ${fore-4} ${ex+5} ${fore-4} Q${ex+jaw+3} ${fore} ${ex+jaw} ${ey-7} Q${ex+3} ${ey-16} ${ex-7} ${ey-13.5} Q${ex-jaw+2} ${ey-12.5} ${ex-jaw-1} ${ey-5}Z`)+`<path d="M${ex-6} ${ey-13} Q${ex+4} ${fore+1} ${ex+jaw-3} ${ey-9}" fill="none" stroke="${hairLL}" stroke-width="1.2" opacity="0.6" stroke-linecap="round"/>`;
+  if(style==='quiff')  hairSvg=H(`M${ex-jaw} ${ey-5} Q${ex-jaw-1} ${fore-3} ${ex-3} ${fore-4} Q${ex} ${fore-9} ${ex+5} ${fore-4} Q${ex+jaw+2} ${fore-2} ${ex+jaw} ${ey-6} Q${ex+3} ${ey-15} ${ex-6} ${ey-14} Q${ex-jaw+2} ${ey-13} ${ex-jaw} ${ey-5}Z`)+gloss;
+  if(style==='recede') hairSvg=H(`M${ex-jaw} ${ey-5} Q${ex-jaw-1} ${fore+2} ${ex-7} ${fore+2} Q${ex-13} ${ey-10} ${ex-jaw} ${ey-5}Z M${ex+jaw} ${ey-5} Q${ex+jaw+1} ${fore+2} ${ex+7} ${fore+2} Q${ex+13} ${ey-10} ${ex+jaw} ${ey-5}Z`);
+  if(style==='fade')   hairSvg=H(`M${ex-jaw+2} ${ey-10} Q${ex} ${fore} ${ex+jaw-2} ${ey-10} Q${ex} ${ey-hh+2} ${ex-jaw+2} ${ey-10}Z`);
+  if(style==='curly')  hairSvg=`<g fill="url(#${uid}h)"><circle cx="${ex-14}" cy="${ey-15}" r="7.5"/><circle cx="${ex-5}" cy="${ey-20.5}" r="8.5"/><circle cx="${ex+6}" cy="${ey-19.5}" r="8.5"/><circle cx="${ex+15}" cy="${ey-13}" r="7.5"/><circle cx="${ex-18}" cy="${ey-7}" r="5.5"/><circle cx="${ex+18}" cy="${ey-7}" r="5.5"/></g><g fill="${hairLL}" opacity="0.3"><circle cx="${ex-6}" cy="${ey-21}" r="3"/><circle cx="${ex+7}" cy="${ey-20}" r="3"/></g>`;
+  if(style==='waves')  hairSvg=H(`M${ex-jaw} ${ey-7} Q${ex-14} ${fore-1} ${ex-7} ${ey-12} Q${ex} ${fore-2} ${ex+7} ${ey-12} Q${ex+14} ${fore-1} ${ex+jaw} ${ey-7} Q${ex} ${ey-14} ${ex-jaw} ${ey-7}Z`)+gloss;
+  if(style==='cornrows') hairSvg=`<g stroke="url(#${uid}h)" stroke-width="2.3" fill="none" stroke-linecap="round">${[-12,-7.5,-2.5,2.5,7.5,12].map(dx=>`<path d="M${ex+dx} ${ey-6} Q${ex+dx*0.8} ${fore} ${ex+dx*0.55} ${ey-13.5}"/>`).join('')}</g><g stroke="${hairLL}" stroke-width="0.7" fill="none" opacity="0.5">${[-12,-2.5,7.5].map(dx=>`<path d="M${ex+dx} ${ey-6} Q${ex+dx*0.8} ${fore} ${ex+dx*0.55} ${ey-13.5}"/>`).join('')}</g>`;
 
   let beardSvg=''; const beards=['none','none','none','stubble','mustache','goatee','beard','beard'];
   const beard=beards[Math.floor(rng()*beards.length)];
   if(beard==='stubble') beardSvg=`<path d="M${ex-jaw+3} ${ey+5} Q${ex} ${ey+chin+2} ${ex+jaw-3} ${ey+5} Q${ex} ${ey+chin-5} ${ex-jaw+3} ${ey+5}Z" fill="${hairD}" opacity="0.28"/>`;
-  if(beard==='mustache')beardSvg=`<path d="M${ex-7} ${my-1.5} Q${ex} ${my+2} ${ex+7} ${my-1.5} Q${ex} ${my-3} ${ex-7} ${my-1.5}Z" fill="${hairD}"/>`;
-  if(beard==='goatee')  beardSvg=`<path d="M${ex-5} ${my+3} Q${ex} ${ey+chin-1} ${ex+5} ${my+3} Q${ex} ${my+6} ${ex-5} ${my+3}Z" fill="${hairD}"/><path d="M${ex-6} ${my-2} Q${ex} ${my+1.5} ${ex+6} ${my-2} Q${ex} ${my-3.5} ${ex-6} ${my-2}Z" fill="${hairD}"/>`;
-  if(beard==='beard')   beardSvg=`<path d="M${ex-jaw+1} ${ey+1} Q${ex-jaw} ${ey+chin+2} ${ex} ${ey+chin+3} Q${ex+jaw} ${ey+chin+2} ${ex+jaw-1} ${ey+1} Q${ex+jaw-5} ${ey+15} ${ex} ${ey+16} Q${ex-jaw+5} ${ey+15} ${ex-jaw+1} ${ey+1}Z" fill="url(#${uid}h)"/>`;
+  if(beard==='mustache')beardSvg=`<path d="M${ex-7} ${my-1.8} Q${ex} ${my+2} ${ex+7} ${my-1.8} Q${ex} ${my-3.4} ${ex-7} ${my-1.8}Z" fill="url(#${uid}h)"/>`;
+  if(beard==='goatee')  beardSvg=`<path d="M${ex-5} ${my+3} Q${ex} ${ey+chin-1} ${ex+5} ${my+3} Q${ex} ${my+6} ${ex-5} ${my+3}Z" fill="url(#${uid}h)"/><path d="M${ex-6} ${my-2.4} Q${ex} ${my+1.5} ${ex+6} ${my-2.4} Q${ex} ${my-4} ${ex-6} ${my-2.4}Z" fill="url(#${uid}h)"/>`;
+  if(beard==='beard')   beardSvg=`<path d="M${ex-jaw+1} ${ey+1} Q${ex-jaw} ${ey+chin+2} ${ex} ${ey+chin+3} Q${ex+jaw} ${ey+chin+2} ${ex+jaw-1} ${ey+1} Q${ex+jaw-5} ${ey+15} ${ex} ${ey+16} Q${ex-jaw+5} ${ey+15} ${ex-jaw+1} ${ey+1}Z" fill="url(#${uid}h)"/><path d="M${ex-8} ${ey+chin-2} Q${ex} ${ey+chin+2} ${ex+8} ${ey+chin-2}" fill="none" stroke="${hairD}" stroke-width="0.7" opacity="0.6"/>`;
 
-  return `<svg viewBox="0 0 80 80" width="${s}" height="${s}" style="flex:0 0 auto;border-radius:50%;background:#eef2f4">
+  let acc='';
+  if(rng()<0.13){ acc+=`<g stroke="#1b1e22" stroke-width="1.2" fill="none" opacity="0.9"><rect x="${exl-4.4}" y="${eyeY-3}" width="8.8" height="6.2" rx="2.6"/><rect x="${exr-4.4}" y="${eyeY-3}" width="8.8" height="6.2" rx="2.6"/><path d="M${exl+4.4} ${eyeY-0.5} L${exr-4.4} ${eyeY-0.5}"/><path d="M${exl-4.4} ${eyeY-1} L${ex-jaw+1} ${eyeY-1.5}"/><path d="M${exr+4.4} ${eyeY-1} L${ex+jaw-1} ${eyeY-1.5}"/></g><g fill="#cfe3ee" opacity="0.18"><rect x="${exl-4.4}" y="${eyeY-3}" width="8.8" height="6.2" rx="2.6"/><rect x="${exr-4.4}" y="${eyeY-3}" width="8.8" height="6.2" rx="2.6"/></g>`; }
+  if(!acc && rng()<0.10){ acc+=`<path d="M${ex-jaw+1} ${ey-9} Q${ex} ${fore+1} ${ex+jaw-1} ${ey-9} L${ex+jaw-1} ${ey-6} Q${ex} ${fore+4} ${ex-jaw+1} ${ey-6}Z" fill="${jersey}"/>`; }
+  let freck=''; if(rng()<0.22){ freck=`<g fill="${skinDD}" opacity="0.4">${[[-6,6],[-3,7.5],[6,6],[3,7.5],[-8,4],[8,4]].map(([dx,dy])=>`<circle cx="${ex+dx}" cy="${ey+dy}" r="0.5"/>`).join('')}</g>`; }
+
+  return `<svg viewBox="0 0 80 80" width="${s}" height="${s}" style="flex:0 0 auto;border-radius:50%">
   <defs>
-    <radialGradient id="${uid}s" cx="42%" cy="38%" r="65%"><stop offset="0%" stop-color="${skinL}"/><stop offset="70%" stop-color="${skin}"/><stop offset="100%" stop-color="${skinD}"/></radialGradient>
-    <linearGradient id="${uid}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${hairL}"/><stop offset="55%" stop-color="${hair}"/><stop offset="100%" stop-color="${hairD}"/></linearGradient>
+    <linearGradient id="${uid}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bgTop}"/><stop offset="100%" stop-color="${bgBot}"/></linearGradient>
+    <radialGradient id="${uid}s" cx="42%" cy="36%" r="68%"><stop offset="0%" stop-color="${skinLL}"/><stop offset="55%" stop-color="${skin}"/><stop offset="100%" stop-color="${skinD}"/></radialGradient>
+    <linearGradient id="${uid}h" x1="0" y1="0" x2="0.2" y2="1"><stop offset="0%" stop-color="${hairLL}"/><stop offset="45%" stop-color="${hairL}"/><stop offset="75%" stop-color="${hair}"/><stop offset="100%" stop-color="${hairD}"/></linearGradient>
+    <radialGradient id="${uid}i" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="${irisL}"/><stop offset="70%" stop-color="${iris}"/><stop offset="100%" stop-color="${irisD}"/></radialGradient>
     <clipPath id="${uid}c"><path d="${headPath}"/></clipPath>
   </defs>
-  <path d="M${ex-7} ${ey+chin-5} L${ex-8} ${ey+chin+7} L${ex+8} ${ey+chin+7} L${ex+7} ${ey+chin-5}Z" fill="${skinD}"/>
-  <path d="M${ex-18} ${ey+chin+8} Q${ex} ${ey+chin+2} ${ex+18} ${ey+chin+8} L${ex+18} ${ey+30} L${ex-18} ${ey+30}Z" fill="${jersey}"/>
-  <path d="M${ex-7} ${ey+chin+2} Q${ex} ${ey+chin+8} ${ex+7} ${ey+chin+2} L${ex+5} ${ey+chin+8} L${ex-5} ${ey+chin+8}Z" fill="${shade(jersey,0.8)}"/>
-  <ellipse cx="${ex-jaw+1}" cy="${ey+3}" rx="3.4" ry="5.2" fill="${skin}"/><path d="M${ex-jaw+1} ${ey} Q${ex-jaw-1} ${ey+3} ${ex-jaw+1} ${ey+6}" fill="none" stroke="${skinDD}" stroke-width="0.8"/>
-  <ellipse cx="${ex+jaw-1}" cy="${ey+3}" rx="3.4" ry="5.2" fill="${skin}"/><path d="M${ex+jaw-1} ${ey} Q${ex+jaw+1} ${ey+3} ${ex+jaw-1} ${ey+6}" fill="none" stroke="${skinDD}" stroke-width="0.8"/>
+  <circle cx="40" cy="40" r="40" fill="url(#${uid}bg)"/>
+  <path d="M${ex-7} ${ey+chin-5} L${ex-8} ${ey+chin+8} L${ex+8} ${ey+chin+8} L${ex+7} ${ey+chin-5}Z" fill="${skinD}"/>
+  <path d="M${ex-7} ${ey+chin-4} Q${ex} ${ey+chin+3} ${ex+7} ${ey+chin-4} L${ex+6} ${ey+chin+3} L${ex-6} ${ey+chin+3}Z" fill="${skinDD}" opacity="0.6"/>
+  <path d="M${ex-19} ${ey+chin+9} Q${ex} ${ey+chin+1} ${ex+19} ${ey+chin+9} L${ex+20} ${ey+32} L${ex-20} ${ey+32}Z" fill="${jersey}"/>
+  <path d="M${ex-19} ${ey+chin+9} Q${ex} ${ey+chin+1} ${ex+19} ${ey+chin+9} L${ex+19} ${ey+chin+11} Q${ex} ${ey+chin+3} ${ex-19} ${ey+chin+11}Z" fill="${shade(jersey,1.2)}" opacity="0.6"/>
+  <path d="M${ex-7} ${ey+chin+1} Q${ex} ${ey+chin+8} ${ex+7} ${ey+chin+1} L${ex+5} ${ey+chin+8} L${ex-5} ${ey+chin+8}Z" fill="${shade(jersey,0.78)}"/>
+  <ellipse cx="${ex-jaw+1}" cy="${ey+3}" rx="3.5" ry="5.3" fill="url(#${uid}s)"/><path d="M${ex-jaw+2} ${ey} Q${ex-jaw-1.5} ${ey+3} ${ex-jaw+1.5} ${ey+6}" fill="none" stroke="${skinDD}" stroke-width="0.8"/>
+  <ellipse cx="${ex+jaw-1}" cy="${ey+3}" rx="3.5" ry="5.3" fill="url(#${uid}s)"/><path d="M${ex+jaw-2} ${ey} Q${ex+jaw+1.5} ${ey+3} ${ex+jaw-1.5} ${ey+6}" fill="none" stroke="${skinDD}" stroke-width="0.8"/>
   ${hairBack}
   <path d="${headPath}" fill="url(#${uid}s)"/>
   <g clip-path="url(#${uid}c)">
-    <path d="M${ex+jaw-8} ${fore} Q${ex+jaw+2} ${ey} ${ex+jaw-3} ${ey+chin} L${ex+jaw+2} ${ey+chin} L${ex+jaw+2} ${fore}Z" fill="${skinD}" opacity="0.35"/>
-    <ellipse cx="${ex-7}" cy="${ey+7}" rx="5" ry="3.5" fill="${skinL}" opacity="0.35"/>
+    <path d="M${ex+jaw-9} ${fore} Q${ex+jaw+2} ${ey} ${ex+jaw-4} ${ey+chin} L${ex+jaw+2} ${ey+chin} L${ex+jaw+2} ${fore}Z" fill="${skinD}" opacity="0.32"/>
+    <path d="M${ex-jaw+9} ${fore} Q${ex-jaw-2} ${ey} ${ex-jaw+4} ${ey+chin} L${ex-jaw-2} ${ey+chin} L${ex-jaw-2} ${fore}Z" fill="${skinD}" opacity="0.16"/>
+    <ellipse cx="${ex}" cy="${fore+5}" rx="12" ry="4" fill="${skinDD}" opacity="0.18"/>
+    <ellipse cx="${ex-7.5}" cy="${ey+7}" rx="4.5" ry="3" fill="${blush}" opacity="0.30"/>
+    <ellipse cx="${ex+7.5}" cy="${ey+7}" rx="4.5" ry="3" fill="${blush}" opacity="0.30"/>
+    <ellipse cx="${ex-6}" cy="${fore+7}" rx="6" ry="3.5" fill="${skinLL}" opacity="0.3"/>
+    ${freck}
   </g>
-  ${brow(ex-11.5)}${brow(ex+4.5)}
-  ${eye(exl)}${eye(exr)}
-  ${nose}${mouth}${beardSvg}
+  ${brow(ex-11.7)}${brow(ex+4.5)}
+  ${eye(exl,uid+'el')}${eye(exr,uid+'er')}
+  ${nose}${mouth}${beardSvg}${acc}
   ${hairSvg}
   </svg>`;
 }
-
 function ratingClass(r){
   r=+r||0;
   if(r>=108) return 'r-gold';
