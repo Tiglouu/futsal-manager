@@ -975,9 +975,11 @@ async function renderTactics(){
   const posOrder={Gardien:0,Fixo:1,Ailier:2,Pivot:3,Universel:4};
   squadList=(players||[]).slice().sort((a,b)=>(posOrder[a.position]-posOrder[b.position])||(b.rating-a.rating));
   lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
-  const { data:tm } = await supa.from("teams").select("cohesion,confidence,tactic_knowledge,tactic").eq("id",myTeam.id).single();
+  const { data:tm } = await supa.from("teams").select("cohesion,confidence,tactic_knowledge,tactic,formation").eq("id",myTeam.id).single();
   const coh=Math.round(tm?.cohesion??85), conf=Math.round(tm?.confidence??75), kno=Math.round(tm?.tactic_knowledge??60);
   myTeam.tactic = tm?.tactic ?? myTeam.tactic;
+  teamFormation = tm?.formation || 'losange';
+  lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
 
   el.innerHTML=`
     <div class="card"><h3 style="font-size:18px;margin-bottom:10px">📊 Forme de l'équipe</h3>
@@ -987,6 +989,12 @@ async function renderTactics(){
       <p style="font-size:11px;color:var(--muted);margin-top:8px">Ces trois paramètres influencent directement la force de ton équipe en match.</p>
     </div>
     ${tacticCardHtml()}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+        <h3 style="font-size:18px">🧩 Formation</h3><button id="saveFormation" class="btn btn-small">Enregistrer</button></div>
+      <select id="formSel">${Object.entries(FORMATIONS).map(([k,f])=>`<option value="${k}" ${k===teamFormation?'selected':''}>${f.name} — ${f.desc}</option>`).join('')}</select>
+      <p id="formHint" style="color:var(--muted);font-size:12px;margin-top:8px"></p>
+    </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px">
         <h3 style="font-size:18px">Composition</h3>
@@ -999,6 +1007,20 @@ async function renderTactics(){
     </div>`;
 
   renderSquadRows();
+  const setFormHint=()=>{ const f=FORMATIONS[teamFormation]; if($("formHint")) $("formHint").textContent=`Postes : ${f.pos.join(' · ')}. Chaque tactique a une formation idéale (bonus de synergie).`; };
+  setFormHint();
+  if($("formSel")) $("formSel").addEventListener("change",()=>{
+    teamFormation=$("formSel").value;
+    lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};   // on recompose selon la nouvelle forme
+    setFormHint(); renderSquadRows();
+  });
+  if($("saveFormation")) $("saveFormation").addEventListener("click", async()=>{
+    const btn=$("saveFormation"); btn.disabled=true; btn.textContent="…";
+    const { error } = await supa.rpc("set_formation",{ p_team:myTeam.id, p_form:teamFormation });
+    btn.disabled=false;
+    if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
+    btn.textContent="Enregistré ✓"; setTimeout(()=>renderTactics(), 700);
+  });
   $("saveLineup").addEventListener("click", saveLineup);
   if($("tacticSel")) $("tacticSel").addEventListener("change", ()=>{
     const b=tacticBeats(+$("tacticSel").value);
@@ -1023,12 +1045,26 @@ function gaugeHtml(label, val, color, hint){
 function cohColor(v){ return v>=80?'var(--green)':v>=55?'#f2d347':'var(--danger)'; }
 function knoColor(v){ return v>=75?'var(--green)':v>=45?'#f2d347':'var(--danger)'; }
 function confColor(v){ return (v<50||v>110)?'var(--danger)':(v>=65&&v<=105)?'var(--green)':'#f2d347'; }
-const SLOT_NATURAL={GK:"Gardien",FIXO:"Fixo",AIL1:"Ailier",AIL2:"Ailier",PIVOT:"Pivot"};
+const FORMATIONS={
+  losange: {name:'Losange (1-2-1)', pos:['Fixo','Ailier','Ailier','Pivot'], desc:'Équilibré'},
+  carre:   {name:'Carré (2-2)',     pos:['Fixo','Fixo','Ailier','Ailier'], desc:'Solide, deux fixos'},
+  beton:   {name:'Béton (3-1)',     pos:['Fixo','Fixo','Fixo','Pivot'],    desc:'Défensif, trois fixos'},
+  attaque: {name:'Attaque (1-1-2)', pos:['Fixo','Ailier','Pivot','Pivot'], desc:'Offensif, double pivot'},
+  eventail:{name:'Éventail (1-3)',  pos:['Fixo','Ailier','Ailier','Ailier'], desc:'Largeur, trois ailiers'}
+};
+let teamFormation='losange';
+const SLOTS=[["GK","🧤"],["FIXO","🛡️"],["AIL1","⚡"],["AIL2","⚡"],["PIVOT","🎯"]];
+function slotExpected(slot){
+  if(slot==='GK') return 'Gardien';
+  const fp=(FORMATIONS[teamFormation]||FORMATIONS.losange).pos;
+  return {FIXO:fp[0],AIL1:fp[1],AIL2:fp[2],PIVOT:fp[3]}[slot];
+}
 let lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
 function slotFit(position, slot){
-  if(position===SLOT_NATURAL[slot]) return 1.00;
+  const exp=slotExpected(slot);
+  if(position===exp) return 1.00;
   if(position==="Universel") return 0.92;
-  if(slot==="GK" || position==="Gardien") return 0.55;
+  if(exp==="Gardien" || position==="Gardien") return 0.55;
   return 0.82;
 }
 function renderSquadRows(){
@@ -1043,7 +1079,10 @@ function renderSquadRows(){
         if(best){ lineup[s]=best.id; used.add(best.id); } });
     }
   }
-  host.innerHTML=SLOTS.map(([s,label,icon])=>{
+  const sideCount={}; 
+  host.innerHTML=SLOTS.map(([s,icon])=>{
+    const exp=slotExpected(s);
+    let label = s==='GK' ? 'Gardien' : exp;
     const chosen=Object.entries(lineup).filter(([k,v])=>k!==s).map(([,v])=>v);
     const opts=squadList.filter(p=>!chosen.includes(p.id))
       .sort((a,b)=>b.rating*slotFit(b.position,s)-a.rating*slotFit(a.position,s))
