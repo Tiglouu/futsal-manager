@@ -737,7 +737,7 @@ async function openMatchModal(matchId){
   }
   const sideOf=e=> isNation ? ((pmap[e.scorer_id]?.nationality===m.home_country)?'home':'away') : (e.team_id===m.home_team_id?'home':'away');
   const evLine=e=>{ const sc=pmap[e.scorer_id], as=pmap[e.assist_id];
-    return `<div class="ev-row"><span class="ev-min num">${e.minute}'</span> ⚽ <b>${sc?esc(sc.name):'?'}</b>${as?` <span style="color:var(--muted)">(passe : ${esc(as.name)})</span>`:''}</div>`; };
+    return `<div class="ev-row"><span class="ev-min num">${e.minute}'</span> ⚽ <b class="${sc?'player-link':''}" ${sc?`data-pid="${e.scorer_id}" style="cursor:pointer"`:''}>${sc?esc(sc.name):'?'}</b>${as?` <span style="color:var(--muted)">(passe : <span class="player-link" data-pid="${e.assist_id}" style="cursor:pointer">${esc(as.name)}</span>)</span>`:''}</div>`; };
   const evHome=ev.filter(e=>sideOf(e)==='home').sort((a,b)=>a.minute-b.minute);
   const evAway=ev.filter(e=>sideOf(e)==='away').sort((a,b)=>a.minute-b.minute);
   const contrib={};
