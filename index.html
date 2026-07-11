@@ -614,7 +614,7 @@ async function openTeamModal(teamId){
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
   players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
-    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
   html+=`<div id="offerMsg" class="msg"></div>`;
@@ -632,48 +632,82 @@ async function openTeamModal(teamId){
 }
 
 async function openPlayerActionModal(playerId){
-  if(!myTeam) return;
   const { data:p } = await supa.from("players").select("*").eq("id", playerId).single();
-  if(!p || p.team_id!==myTeam.id) return;
+  if(!p) return;
+  const own = myTeam && p.team_id===myTeam.id;
   const value=p.rating*12000;
   let ov=$("playerModal");
   if(!ov){ ov=document.createElement("div"); ov.id="playerModal"; ov.className="modal-ov"; document.body.appendChild(ov);
     ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); }); }
+  ov.innerHTML='<div class="modal-card"><div class="loading">Chargement…</div></div>';
+
+  // club + stats + trophées
+  let club=null;
+  if(p.team_id){ const {data:t}=await supa.from("teams").select("name,country_code").eq("id",p.team_id).single(); club=t; }
+  const [gR,aR] = await Promise.all([
+    supa.from("match_events").select("id",{count:'exact',head:true}).eq("scorer_id",playerId),
+    supa.from("match_events").select("id",{count:'exact',head:true}).eq("assist_id",playerId)
+  ]);
+  const goals=gR.count||0, assists=aR.count||0;
+  let trophies=[];
+  if(club){ const {data:h}=await supa.from("hall_of_fame").select("category,season").eq("winner_name",club.name); trophies=h||[]; }
+  const tl={'Ligue des champions':'🏆 C1','Super-Coupe':'🥇 Super-Coupe','Coupe nationale':'🏆 Coupe','Championnat':'🏅 Titre','Coupe du monde':'🌍 Mondial','Coupe continentale':'🌍 Continentale'};
+  const tc={}; trophies.forEach(x=>{ tc[x.category]=(tc[x.category]||0)+1; });
+  const trophyHtml = Object.keys(tc).length ? Object.keys(tc).map(c=>`${tl[c]||c} ×${tc[c]}`).join(' · ') : '<span style="color:var(--muted)">Aucun trophée</span>';
+
   const cls=ratingClass(p.rating);
+  const conf=Math.round(p.confidence??70), form=Math.round(p.form??70);
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${p.position} · ${p.age} ans · <span class="${cls}">Note ${p.rating}</span></div>
-      <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">💰 ${fmtMoney(p.salary||0)}/saison · 📄 Contrat jusqu'en S${p.contract_until||'?'}</div></div>
+      <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">${club?flag(club.country_code,12)+' '+esc(club.name):'Agent libre'}${own?` · 💰 ${fmtMoney(p.salary||0)}/saison · 📄 S${p.contract_until||'?'}`:''}</div></div>
       <button class="logout" id="closePM">Fermer</button></div>
-    <div class="row-actions" style="margin-top:18px">
-      <button id="sellP" class="btn btn-orange btn-small">Vendre · ${fmtMoney(value)}</button>
-      <button id="renewP" class="btn btn-small" style="background:var(--panel-2);border:1px solid var(--line)">Prolonger 2 ans · ${fmtMoney(p.salary||Math.max(20000,p.rating*3000))}</button>
-      <button id="releaseP" class="btn btn-small" style="background:var(--panel-2);color:var(--danger);border:1px solid var(--line)">Licencier</button>
+
+    <div class="card" style="margin-top:14px;background:var(--board)">
+      ${gaugeHtml("Confiance", conf, confColorP(conf), conf<40?"En manque de confiance.":conf>85?"En pleine confiance.":"")}
+      ${gaugeHtml("Forme", form, formColorP(form), form<40?"Méforme — a besoin de jouer/s'entraîner.":form>85?"Grande forme.":"")}
     </div>
+
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <div class="pill">⚽ ${goals} but${goals>1?'s':''}</div>
+      <div class="pill">🅰️ ${assists} passe${assists>1?'s':''}</div>
+      <div class="pill">✨ ${goals+assists} contributions</div>
+    </div>
+    <div style="margin-top:12px;font-size:13px"><span style="color:var(--muted)">🏆 Palmarès du club :</span> ${trophyHtml}</div>
+
+    ${own?`<div class="row-actions" style="margin-top:16px">
+      <button id="sellP" class="btn btn-orange btn-small">Vendre · ${fmtMoney(value)}</button>
+      <button id="renewP" class="btn btn-small" style="background:var(--panel-2);border:1px solid var(--line)">Prolonger 2 ans</button>
+      <button id="releaseP" class="btn btn-small" style="background:var(--panel-2);color:var(--danger);border:1px solid var(--line)">Licencier</button>
+    </div>`:''}
     <div id="pmMsg" class="msg"></div></div>`;
   $("closePM").addEventListener("click", ()=>ov.remove());
-  $("renewP").addEventListener("click", async()=>{
-    $("renewP").disabled=true;
-    const { data, error } = await supa.rpc("renew_contract",{ p_player_id:playerId, p_team:myTeam.id, p_years:2 });
-    if(error){ msg($("pmMsg"), error.message, "error"); $("renewP").disabled=false; return; }
-    msg($("pmMsg"), "Contrat prolongé de 2 saisons (prime : "+fmtMoney(data)+").", "info");
-    await refreshMyTeam(); setTimeout(()=>{ ov.remove(); renderSquad(); }, 900);
-  });
-  $("sellP").addEventListener("click", async()=>{
-    $("sellP").disabled=true; $("releaseP").disabled=true;
-    const { error } = await supa.rpc("sell_player",{ p_player_id:playerId, p_team:myTeam.id });
-    if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
-    ov.remove(); await refreshMyTeam(); renderSquad();
-  });
-  $("releaseP").addEventListener("click", async()=>{
-    if(!confirm("Licencier ce joueur ? (aucun remboursement)")) return;
-    $("sellP").disabled=true; $("releaseP").disabled=true;
-    const { error } = await supa.rpc("release_player",{ p_player_id:playerId, p_team:myTeam.id });
-    if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
-    ov.remove(); await refreshMyTeam(); renderSquad();
-  });
+  if(own){
+    $("renewP").addEventListener("click", async()=>{
+      $("renewP").disabled=true;
+      const { data, error } = await supa.rpc("renew_contract",{ p_player_id:playerId, p_team:myTeam.id, p_years:2 });
+      if(error){ msg($("pmMsg"), error.message, "error"); $("renewP").disabled=false; return; }
+      msg($("pmMsg"), "Contrat prolongé de 2 saisons (prime : "+fmtMoney(data)+").", "info");
+      await refreshMyTeam(); setTimeout(()=>{ ov.remove(); renderSquad(); }, 900);
+    });
+    $("sellP").addEventListener("click", async()=>{
+      $("sellP").disabled=true; $("releaseP").disabled=true;
+      const { error } = await supa.rpc("sell_player",{ p_player_id:playerId, p_team:myTeam.id });
+      if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
+      ov.remove(); await refreshMyTeam(); renderSquad();
+    });
+    $("releaseP").addEventListener("click", async()=>{
+      if(!confirm("Licencier ce joueur ? (aucun remboursement)")) return;
+      $("sellP").disabled=true; $("releaseP").disabled=true;
+      const { error } = await supa.rpc("release_player",{ p_player_id:playerId, p_team:myTeam.id });
+      if(error){ msg($("pmMsg"), error.message, "error"); $("sellP").disabled=false; $("releaseP").disabled=false; return; }
+      ov.remove(); await refreshMyTeam(); renderSquad();
+    });
+  }
 }
+function confColorP(v){ return v>=70?'var(--green)':v>=40?'#f2d347':'var(--danger)'; }
+function formColorP(v){ return v>=70?'var(--green)':v>=40?'#f2d347':'var(--danger)'; }
 
 async function openMatchModal(matchId){
   let ov=$("matchModal");
@@ -753,7 +787,7 @@ async function renderScorers(host, filter){
     let h=`<div style="font-weight:600;margin:8px 0 6px">${label}</div>`;
     arr.forEach(([id,n],i)=>{ const p=pmap[id];
       h+=`<div class="player" style="padding:8px 0"><span class="num" style="width:22px;color:var(--muted)">${i+1}</span>
-        <span class="pname">${p?flag(p.nationality,13)+' '+esc(p.name):'—'}</span><span class="rating">${n}</span></div>`; });
+        <span class="pname ${p?'player-link':''}" ${p?`data-pid="${id}" style="cursor:pointer"`:''}>${p?flag(p.nationality,13)+' '+esc(p.name):'—'}</span><span class="rating">${n}</span></div>`; });
     return h;
   };
   host.innerHTML = list(topS,'Meilleurs buteurs') + (topA.length?list(topA,'Meilleurs passeurs'):'');
@@ -1297,7 +1331,7 @@ async function renderOffersCard(){
       const cls=ratingClass(p.rating);
       return `<div class="player" style="flex-wrap:wrap">
         <span class="rating ${cls}">${p.rating}</span>
-        <span class="pname" style="margin-left:8px">${esc(p.name)}</span>
+        <span class="pname player-link" data-pid="${o.player_id}" style="margin-left:8px;cursor:pointer">${esc(p.name)}</span>
         <span style="color:var(--muted);font-size:11px;margin-left:8px">${p.position} · ${p.age} ans</span>
         <span style="margin-left:auto;text-align:right;font-size:12px">${flag(t?.country_code,13)} ${esc(t?.name||'?')}<br>
           <b style="color:var(--green);font-family:'Space Mono',monospace">${fmtMoney(o.fee)}</b></span>
@@ -1795,7 +1829,7 @@ function renderNatRows(isCoach){
   list.forEach(p=>{
     const on=natStarters.has(p.id), cls=ratingClass(p.rating);
     html+=`<div class="player" style="${isCoach&&!on?'opacity:.55':''}">
-      <span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      <span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${isCoach?`<button class="btn btn-small nat-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>`:''}</div>`;
   });
