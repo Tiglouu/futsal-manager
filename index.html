@@ -111,6 +111,9 @@
   .pname{flex:1;font-weight:500}
   .page{color:var(--muted);font-size:13px;margin-right:8px}
   .rating{font-family:'Space Mono',monospace;font-size:18px;width:38px;text-align:right}
+  .r-brown{color:#a0693c} .r-grey{color:#9aa0a6} .r-white{color:#f2f2f2} .r-yellow{color:#f2d347}
+  .r-orange{color:#ef8b4b} .r-green{color:#58c08a} .r-red{color:#e5534b} .r-purple{color:#b57edc}
+  .r-silver{color:#cfd6de;text-shadow:0 0 6px rgba(207,214,222,.5)} .r-gold{color:#f4c430;text-shadow:0 0 6px rgba(244,196,48,.55)}
   .r-hi{color:var(--green)} .r-mid{color:var(--chalk)} .r-lo{color:var(--muted)}
 
   table{width:100%;border-collapse:collapse}
@@ -442,6 +445,19 @@ function markMondeSeen(){
   b.classList.add("hidden");
 }
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function ratingClass(r){
+  r=+r||0;
+  if(r>=108) return 'r-gold';
+  if(r>=97)  return 'r-silver';
+  if(r>=86)  return 'r-purple';
+  if(r>=81)  return 'r-red';
+  if(r>=71)  return 'r-green';
+  if(r>=61)  return 'r-orange';
+  if(r>=51)  return 'r-yellow';
+  if(r>=41)  return 'r-white';
+  if(r>=20)  return 'r-grey';
+  return 'r-brown';
+}
 
 window.addEventListener("DOMContentLoaded", ()=>{
   init().catch(err=>{
@@ -596,7 +612,7 @@ async function openTeamModal(teamId){
     </div>
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
-  players.forEach(p=>{ const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo"; const fee=p.rating*15000;
+  players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
     html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
@@ -622,7 +638,7 @@ async function openPlayerActionModal(playerId){
   let ov=$("playerModal");
   if(!ov){ ov=document.createElement("div"); ov.id="playerModal"; ov.className="modal-ov"; document.body.appendChild(ov);
     ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); }); }
-  const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+  const cls=ratingClass(p.rating);
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
@@ -1202,7 +1218,7 @@ async function renderOffersCard(){
     <h3 style="font-size:18px;margin-bottom:4px">📩 Offres reçues (${offers.length})</h3>
     <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Des clubs veulent tes joueurs. À toi de décider.</p>`
     + offers.map(o=>{ const p=pmap[o.player_id], t=tmap[o.from_team]; if(!p) return '';
-      const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+      const cls=ratingClass(p.rating);
       return `<div class="player" style="flex-wrap:wrap">
         <span class="rating ${cls}">${p.rating}</span>
         <span class="pname" style="margin-left:8px">${esc(p.name)}</span>
@@ -1227,7 +1243,7 @@ function renderTrainRows(){
   let html="";
   squadList.forEach(p=>{
     const cd = p.training_until && new Date(p.training_until)>new Date();
-    const cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    const cls=ratingClass(p.rating);
     let cdTxt="Entraîner";
     if(cd){ const diff=Math.max(0,Math.round((new Date(p.training_until)-new Date())/3600000)); cdTxt=`~${diff} h`; }
     html+=`<div class="player"><span class="pos">${p.position}</span>
@@ -1701,7 +1717,7 @@ function renderNatRows(isCoach){
   const list=isCoach?natList:natList.slice(0,15);
   let html="";
   list.forEach(p=>{
-    const on=natStarters.has(p.id), cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    const on=natStarters.has(p.id), cls=ratingClass(p.rating);
     html+=`<div class="player" style="${isCoach&&!on?'opacity:.55':''}">
       <span class="pos">${p.position}</span><span class="pname">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
@@ -2194,7 +2210,7 @@ async function loadMercato(){
   if(!list.length){ host.innerHTML='<div class="empty">Aucun résultat.</div>'; return; }
   let html="";
   list.forEach(p=>{
-    const club=bmap[p.team_id], price=p.rating*15000, cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    const club=bmap[p.team_id], price=p.rating*15000, cls=ratingClass(p.rating);
     html+=`<div class="market-row"><span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name">${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · ${club?flag(club.country_code,12)+' '+esc(club.name):'—'}</div></div>
@@ -2234,7 +2250,7 @@ async function loadAuctions(){
   let html="";
   active.forEach(a=>{
     const p=pmap[a.player_id]; if(!p) return;
-    const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=p.rating>=70?"r-hi":p.rating>=50?"r-mid":"r-lo";
+    const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=ratingClass(p.rating);
     html+=`<div class="market-row" data-end="${a.ends_at}"><span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name">${flag(p.nationality,14)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
