@@ -307,8 +307,9 @@
   </div>
   <div class="wrap">
     <div id="tab-team">
-      <div class="subnav"><button class="active" data-sub="team:squad">Effectif</button><button data-sub="team:calendar">Calendrier</button></div>
+      <div class="subnav"><button class="active" data-sub="team:squad">Effectif</button><button data-sub="team:tactics">Tactique</button><button data-sub="team:calendar">Calendrier</button></div>
       <div id="tab-squad"></div>
+      <div id="tab-tactics" class="hidden"></div>
       <div id="tab-calendar" class="hidden"></div>
     </div>
     <div id="tab-league" class="hidden"></div>
@@ -879,8 +880,9 @@ function showSub(group, which){
     subTeam=which;
     document.querySelectorAll('#tab-team .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='team:'+which));
     $("tab-squad").classList.toggle("hidden", which!=="squad");
+    $("tab-tactics").classList.toggle("hidden", which!=="tactics");
     $("tab-calendar").classList.toggle("hidden", which!=="calendar");
-    if(which==="squad") renderSquad(); else renderCalendar();
+    if(which==="squad") renderSquad(); else if(which==="tactics") renderTactics(); else renderCalendar();
   } else if(group==="monde"){
     subMonde=which;
     document.querySelectorAll('#tab-monde .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='monde:'+which));
@@ -910,18 +912,10 @@ async function renderSquad(){
       <span class="pill">Note moy. ${avg}</span><span class="pill">${squadList.length} joueurs</span></div></div></div>
     <div id="journalBox"></div>
     <div id="offersBox"></div>
-    ${tacticCardHtml()}
+    <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--muted)">⚙️ La composition et la tactique sont désormais dans l'onglet</span>
+      <button class="btn btn-small" onclick="showSub('team','tactics')">Tactique →</button></div>
     <div id="sponsorBox"></div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px">
-        <h3 style="font-size:18px">Composition</h3>
-        <button id="saveLineup" class="btn btn-small">Enregistrer</button>
-      </div>
-      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Place un joueur à chaque poste. Un joueur hors de son poste naturel perd en efficacité, et ta tactique favorise certains postes.</p>
-      <div id="lineupSlots"></div>
-      <div id="lineupInfo" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
-      <div id="lineupMsg" class="msg"></div>
-    </div>
     <div class="card"><h3 style="font-size:18px;margin-bottom:4px">Entraînement</h3>
       <p style="color:var(--muted);font-size:12px;margin-bottom:10px">+5 max / −3 max par séance selon l'âge (les jeunes progressent mieux). Cooldown de 12 h par joueur.</p>
       <div id="trainRows"></div></div>
@@ -947,7 +941,6 @@ async function renderSquad(){
         <button id="pwBtn" class="btn btn-small">Changer</button>
       </div>
       <div id="pwMsg" class="msg"></div></div>`;
-  renderSquadRows();
   renderTrainRows();
   wireScout();
   renderOffersCard();
@@ -972,6 +965,40 @@ async function renderSquad(){
     $("pw1").value=""; $("pw2").value="";
     msg($("pwMsg"), "✓ Mot de passe modifié. Note-le en lieu sûr !", "info");
   });
+}
+
+/* ---------- Onglet Tactique ---------- */
+async function renderTactics(){
+  const el=$("tab-tactics"); if(!el) return;
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  const { data:players } = await supa.from("players").select("*").eq("team_id", myTeam.id);
+  const posOrder={Gardien:0,Fixo:1,Ailier:2,Pivot:3,Universel:4};
+  squadList=(players||[]).slice().sort((a,b)=>(posOrder[a.position]-posOrder[b.position])||(b.rating-a.rating));
+  lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
+  const { data:tm } = await supa.from("teams").select("cohesion,confidence,tactic_knowledge,tactic").eq("id",myTeam.id).single();
+  const coh=Math.round(tm?.cohesion??85), conf=Math.round(tm?.confidence??75), kno=Math.round(tm?.tactic_knowledge??60);
+  myTeam.tactic = tm?.tactic ?? myTeam.tactic;
+
+  el.innerHTML=`
+    <div class="card"><h3 style="font-size:18px;margin-bottom:10px">📊 Forme de l'équipe</h3>
+      ${gaugeHtml("Cohésion", coh, cohColor(coh), "Baisse quand un joueur arrive ou part, remonte avec le temps.")}
+      ${gaugeHtml("Confiance", conf, confColor(conf), conf<50?"Trop basse : l'équipe doute (malus).":conf>110?"Excès de confiance : relâchement (malus).":"Zone idéale.")}
+      ${gaugeHtml("Connaissance tactique", kno, knoColor(kno), "Repart à la baisse quand tu changes de tactique ou d'effectif, puis s'apprend.")}
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Ces trois paramètres influencent directement la force de ton équipe en match.</p>
+    </div>
+    ${tacticCardHtml()}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px">
+        <h3 style="font-size:18px">Composition</h3>
+        <button id="saveLineup" class="btn btn-small">Enregistrer</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Place un joueur à chaque poste. Hors de son poste naturel, un joueur perd en efficacité ; ta tactique favorise certains postes.</p>
+      <div id="lineupSlots"></div>
+      <div id="lineupInfo" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+      <div id="lineupMsg" class="msg"></div>
+    </div>`;
+
+  renderSquadRows();
   $("saveLineup").addEventListener("click", saveLineup);
   if($("tacticSel")) $("tacticSel").addEventListener("change", ()=>{
     const b=tacticBeats(+$("tacticSel").value);
@@ -982,10 +1009,20 @@ async function renderSquad(){
     const { error } = await supa.rpc("set_tactic",{ p_team:myTeam.id, p_tactic:v });
     btn.disabled=false;
     if(error){ alert(error.message); btn.textContent="Enregistrer"; return; }
-    myTeam.tactic=v; btn.textContent="Enregistré ✓"; setTimeout(()=>{ if($("saveTactic")) btn.textContent="Enregistrer"; },1500);
+    myTeam.tactic=v; btn.textContent="Enregistré ✓";
+    setTimeout(()=>renderTactics(), 700);   // recharge : la connaissance tactique a chuté
   });
 }
-const SLOTS=[["GK","Gardien","🧤"],["FIXO","Fixo","🛡️"],["AIL1","Ailier gauche","⚡"],["AIL2","Ailier droit","⚡"],["PIVOT","Pivot","🎯"]];
+function gaugeHtml(label, val, color, hint){
+  const w=Math.max(0,Math.min(100, val));
+  return `<div style="margin:8px 0">
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${label}</span><b style="color:${color}">${val}%</b></div>
+    <div style="height:8px;background:var(--board);border-radius:5px;overflow:hidden"><div style="height:100%;width:${w}%;background:${color}"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">${hint}</div></div>`;
+}
+function cohColor(v){ return v>=80?'var(--green)':v>=55?'#f2d347':'var(--danger)'; }
+function knoColor(v){ return v>=75?'var(--green)':v>=45?'#f2d347':'var(--danger)'; }
+function confColor(v){ return (v<50||v>110)?'var(--danger)':(v>=65&&v<=105)?'var(--green)':'#f2d347'; }
 const SLOT_NATURAL={GK:"Gardien",FIXO:"Fixo",AIL1:"Ailier",AIL2:"Ailier",PIVOT:"Pivot"};
 let lineup={GK:null,FIXO:null,AIL1:null,AIL2:null,PIVOT:null};
 function slotFit(position, slot){
