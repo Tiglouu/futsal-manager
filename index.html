@@ -446,6 +446,91 @@ function markMondeSeen(){
   b.classList.add("hidden");
 }
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+/* ============ Générateur de visages SVG (déterministe par joueur) ============ */
+const FACE_SKIN=['#ffe0c4','#f6cfa6','#eab98a','#d69f6e','#c07f4e','#a4693c','#824f2c','#5d3820','#3f2617'];
+const FACE_HAIR=['#0c0c0d','#221812','#3a281a','#5a3a22','#7a5230','#a06a2c','#c9973f','#e0c088','#d9d9d9','#b03a2e'];
+// pondération peau [9 tons clair→foncé] par zone
+const FACE_SKINW={
+  'Europe':           [22,26,22,14,8,4,2,1,1],
+  'Amérique du Nord': [14,18,16,14,10,10,8,6,4],
+  'Amérique latine':  [3,8,16,20,20,16,10,5,2],
+  'Moyen-Orient':     [4,10,20,26,20,12,6,2,0],
+  'Asie':             [10,22,26,20,12,6,3,1,0],
+  'Océanie':          [8,14,16,16,14,12,10,6,4],
+  'Caraïbe':          [1,3,7,12,18,22,20,12,5],
+  'Afrique':          [0,1,2,4,9,16,24,26,18],
+  'default':          [10,14,16,16,14,12,10,5,3]
+};
+// pondération couleur de cheveux [noir→brun→blond→gris→roux] par zone
+const FACE_HAIRW={
+  'Europe':  [16,20,16,12,10,8,6,6,4,2],
+  'Afrique': [70,18,6,2,0,0,0,0,3,1],
+  'Asie':    [72,16,6,2,0,0,0,0,3,1],
+  'Moyen-Orient':[55,25,10,4,1,0,0,0,4,1],
+  'Caraïbe': [62,20,8,3,0,0,0,0,5,2],
+  'Amérique latine':[45,28,14,6,2,1,0,0,3,1],
+  'default': [40,24,14,8,4,2,1,1,4,2]
+};
+function faceHash(s){ let h=1779033703^s.length; for(let i=0;i<s.length;i++){ h=Math.imul(h^s.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); } return (h^(h>>>16))>>>0; }
+function faceRng(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function facePickW(weights, r){ const tot=weights.reduce((s,x)=>s+x,0); let x=r*tot; for(let i=0;i<weights.length;i++){ x-=weights[i]; if(x<0) return i; } return weights.length-1; }
+function shade(hex, f){ const n=parseInt(hex.slice(1),16); let R=(n>>16)&255,G=(n>>8)&255,B=n&255; R=Math.round(R*f);G=Math.round(G*f);B=Math.round(B*f); return '#'+((1<<24)+(R<<16)+(G<<8)+B).toString(16).slice(1); }
+function playerFace(seed, cc, size){
+  const s=size||46, zone=(typeof countryZone==='function'?countryZone(cc):'default');
+  const rng=faceRng(faceHash(String(seed||'x')+'|'+(cc||'')));
+  const skin=FACE_SKIN[facePickW(FACE_SKINW[zone]||FACE_SKINW.default, rng())];
+  const skinD=shade(skin,0.86);
+  const hair=FACE_HAIR[facePickW(FACE_HAIRW[zone]||FACE_HAIRW.default, rng())];
+  const styles=['bald','buzz','short','side','curly','afro','spiky','long','recede','fade'];
+  const style=styles[Math.floor(rng()*styles.length)];
+  const beards=['none','none','none','stubble','mustache','goatee','beard'];
+  const beard=beards[Math.floor(rng()*beards.length)];
+  const eyeType=Math.floor(rng()*3), browT=1.4+rng()*1.6, noseT=Math.floor(rng()*3), mouthT=Math.floor(rng()*3);
+  const ex=40, ey=44, hw=22, hh=25;                 // centre + demi-largeur/hauteur tête
+
+  let hairSvg='';
+  const H=(d)=>`<path d="${d}" fill="${hair}"/>`;
+  if(style==='afro')   hairSvg=`<circle cx="${ex}" cy="${ey-8}" r="26" fill="${hair}"/>`;
+  if(style==='buzz')   hairSvg=H(`M${ex-hw} ${ey-6} Q${ex} ${ey-hh-6} ${ex+hw} ${ey-6} Q${ex} ${ey-hh} ${ex-hw} ${ey-6}Z`);
+  if(style==='short')  hairSvg=H(`M${ex-hw-1} ${ey-2} Q${ex-hw-2} ${ey-hh-4} ${ex} ${ey-hh-5} Q${ex+hw+2} ${ey-hh-4} ${ex+hw+1} ${ey-2} Q${ex+hw-4} ${ey-14} ${ex} ${ey-14} Q${ex-hw+4} ${ey-14} ${ex-hw-1} ${ey-2}Z`);
+  if(style==='side')   hairSvg=H(`M${ex-hw-1} ${ey-4} Q${ex-hw} ${ey-hh-5} ${ex+6} ${ey-hh-4} Q${ex+hw+3} ${ey-hh} ${ex+hw} ${ey-6} Q${ex+4} ${ey-16} ${ex-6} ${ey-14} Q${ex-hw+2} ${ey-13} ${ex-hw-1} ${ey-4}Z`);
+  if(style==='curly')  hairSvg=`<g fill="${hair}"><circle cx="${ex-14}" cy="${ey-16}" r="8"/><circle cx="${ex-4}" cy="${ey-21}" r="9"/><circle cx="${ex+7}" cy="${ey-20}" r="9"/><circle cx="${ex+16}" cy="${ey-14}" r="8"/><circle cx="${ex-18}" cy="${ey-8}" r="6"/><circle cx="${ex+18}" cy="${ey-8}" r="6"/></g>`;
+  if(style==='spiky')  hairSvg=H(`M${ex-hw} ${ey-6} L${ex-16} ${ey-hh-2} L${ex-9} ${ey-12} L${ex-2} ${ey-hh-6} L${ex+4} ${ey-12} L${ex+11} ${ey-hh-2} L${ex+hw} ${ey-6} Q${ex} ${ey-16} ${ex-hw} ${ey-6}Z`);
+  if(style==='long')   hairSvg=`<g fill="${hair}"><path d="M${ex-hw-2} ${ey+14} Q${ex-hw-4} ${ey-hh} ${ex} ${ey-hh-4} Q${ex+hw+4} ${ey-hh} ${ex+hw+2} ${ey+14} Q${ex+hw-2} ${ey+6} ${ex+hw-3} ${ey-6} Q${ex} ${ey-16} ${ex-hw+3} ${ey-6} Q${ex-hw+2} ${ey+6} ${ex-hw-2} ${ey+14}Z"/></g>`;
+  if(style==='recede') hairSvg=H(`M${ex-hw} ${ey-4} Q${ex-hw-1} ${ey-hh+2} ${ex-6} ${ey-hh+2} Q${ex-12} ${ey-10} ${ex-hw} ${ey-4}Z M${ex+hw} ${ey-4} Q${ex+hw+1} ${ey-hh+2} ${ex+6} ${ey-hh+2} Q${ex+12} ${ey-10} ${ex+hw} ${ey-4}Z`);
+  if(style==='fade')   hairSvg=H(`M${ex-hw+2} ${ey-8} Q${ex} ${ey-hh-3} ${ex+hw-2} ${ey-8} Q${ex} ${ey-hh+1} ${ex-hw+2} ${ey-8}Z`);
+
+  let beardSvg='';
+  if(beard==='stubble') beardSvg=`<path d="M${ex-hw+3} ${ey+6} Q${ex} ${ey+hh+3} ${ex+hw-3} ${ey+6} Q${ex} ${ey+hh-4} ${ex-hw+3} ${ey+6}Z" fill="${hair}" opacity="0.22"/>`;
+  if(beard==='mustache')beardSvg=`<path d="M${ex-8} ${ey+13} Q${ex} ${ey+16} ${ex+8} ${ey+13} Q${ex} ${ey+11} ${ex-8} ${ey+13}Z" fill="${hair}"/>`;
+  if(beard==='goatee')  beardSvg=`<path d="M${ex-6} ${ey+15} Q${ex} ${ey+24} ${ex+6} ${ey+15} Q${ex} ${ey+18} ${ex-6} ${ey+15}Z" fill="${hair}"/>`;
+  if(beard==='beard')   beardSvg=`<path d="M${ex-hw+2} ${ey+2} Q${ex-hw+1} ${ey+hh+4} ${ex} ${ey+hh+6} Q${ex+hw-1} ${ey+hh+4} ${ex+hw-2} ${ey+2} Q${ex+hw-6} ${ey+16} ${ex} ${ey+17} Q${ex-hw+6} ${ey+16} ${ex-hw+2} ${ey+2}Z" fill="${hair}"/>`;
+
+  const eyeY=ey-1;
+  const eye = eyeType===0
+    ? `<ellipse cx="CX" cy="${eyeY}" rx="3.2" ry="2.4" fill="#fff"/><circle cx="CX" cy="${eyeY}" r="1.5" fill="#3a2a1a"/>`
+    : eyeType===1
+    ? `<circle cx="CX" cy="${eyeY}" r="2.3" fill="#fff"/><circle cx="CX" cy="${eyeY}" r="1.3" fill="#2a2118"/>`
+    : `<path d="M CX-3 ${eyeY} Q CX ${eyeY-2.4} CX+3 ${eyeY} Q CX ${eyeY+2} CX-3 ${eyeY}Z" fill="#fff"/><circle cx="CX" cy="${eyeY}" r="1.4" fill="#111"/>`;
+  const eyeL=eye.replace(/CX/g,(ex-8)), eyeR=eye.replace(/CX/g,(ex+8));
+  const brow=`<rect x="${ex-11}" y="${eyeY-5}" width="7" height="${browT}" rx="1" fill="${hair}"/><rect x="${ex+4}" y="${eyeY-5}" width="7" height="${browT}" rx="1" fill="${hair}"/>`;
+  const nose = noseT===0 ? `<path d="M${ex} ${ey+2} L${ex-2} ${ey+7} Q${ex} ${ey+9} ${ex+2} ${ey+7}Z" fill="${skinD}"/>`
+             : noseT===1 ? `<path d="M${ex-1} ${ey+3} Q${ex-3} ${ey+8} ${ex} ${ey+8} Q${ex+3} ${ey+8} ${ex+1} ${ey+3}" fill="none" stroke="${skinD}" stroke-width="1.3"/>`
+             : `<ellipse cx="${ex}" cy="${ey+7}" rx="2.6" ry="1.6" fill="${skinD}"/>`;
+  const mouth = mouthT===0 ? `<path d="M${ex-6} ${ey+13} Q${ex} ${ey+16} ${ex+6} ${ey+13}" fill="none" stroke="${shade(skin,0.6)}" stroke-width="1.4" stroke-linecap="round"/>`
+              : mouthT===1 ? `<path d="M${ex-5} ${ey+14} Q${ex} ${ey+15} ${ex+5} ${ey+14}" fill="none" stroke="${shade(skin,0.6)}" stroke-width="1.4" stroke-linecap="round"/>`
+              : `<path d="M${ex-6} ${ey+14} Q${ex} ${ey+12.5} ${ex+6} ${ey+14}" fill="none" stroke="${shade(skin,0.6)}" stroke-width="1.4" stroke-linecap="round"/>`;
+
+  return `<svg viewBox="0 0 80 80" width="${s}" height="${s}" style="flex:0 0 auto;border-radius:50%;background:#e9eef0">
+    <rect x="${ex-6}" y="${ey+hh-6}" width="12" height="14" fill="${skinD}"/>
+    <ellipse cx="${ex-hw}" cy="${ey+3}" rx="3.5" ry="5" fill="${skin}"/><ellipse cx="${ex+hw}" cy="${ey+3}" rx="3.5" ry="5" fill="${skin}"/>
+    <ellipse cx="${ex}" cy="${ey}" rx="${hw}" ry="${hh}" fill="${skin}"/>
+    ${style==='long'||style==='afro'?hairSvg:''}
+    ${brow}${eyeL}${eyeR}${nose}${mouth}${beardSvg}
+    ${style!=='long'&&style!=='afro'?hairSvg:''}
+  </svg>`;
+}
+
 function ratingClass(r){
   r=+r||0;
   if(r>=108) return 'r-gold';
@@ -614,7 +699,7 @@ async function openTeamModal(teamId){
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
   players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
-    html+=`<div class="player"><span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+    html+=`<div class="player">${playerFace(p.id,p.nationality,34)}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
   html+=`<div id="offerMsg" class="msg"></div>`;
@@ -659,9 +744,10 @@ async function openPlayerActionModal(playerId){
   const conf=Math.round(p.confidence??70), form=Math.round(p.form??70);
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="display:flex;gap:12px;align-items:center">${playerFace(p.id,p.nationality,64)}
       <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${p.position} · ${p.age} ans · <span class="${cls}">Note ${p.rating}</span></div>
-      <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">${club?flag(club.country_code,12)+' '+esc(club.name):'Agent libre'}${own?` · 💰 ${fmtMoney(p.salary||0)}/saison · 📄 S${p.contract_until||'?'}`:''}</div></div>
+      <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">${club?flag(club.country_code,12)+' '+esc(club.name):'Agent libre'}${own?` · 💰 ${fmtMoney(p.salary||0)}/saison · 📄 S${p.contract_until||'?'}`:''}</div></div></div>
       <button class="logout" id="closePM">Fermer</button></div>
 
     <div class="card" style="margin-top:14px;background:var(--board)">
@@ -2322,8 +2408,8 @@ async function loadMercato(){
   let html="";
   list.forEach(p=>{
     const club=bmap[p.team_id], price=p.rating*15000, cls=ratingClass(p.rating);
-    html+=`<div class="market-row"><span class="mk-rating ${cls}">${p.rating}</span>
-      <div class="mk-info"><div class="mk-name">${esc(p.name)}</div>
+    html+=`<div class="market-row">${playerFace(p.id,p.nationality,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+      <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,12)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · ${club?flag(club.country_code,12)+' '+esc(club.name):'—'}</div></div>
       <div style="text-align:right"><div class="mk-price">${fmtMoney(price)}</div>
         <button class="btn btn-orange btn-small buy" data-id="${p.id}" data-fee="${price}" style="margin-top:5px">Recruter</button></div></div>`;
@@ -2362,8 +2448,8 @@ async function loadAuctions(){
   active.forEach(a=>{
     const p=pmap[a.player_id]; if(!p) return;
     const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=ratingClass(p.rating);
-    html+=`<div class="market-row" data-end="${a.ends_at}"><span class="mk-rating ${cls}">${p.rating}</span>
-      <div class="mk-info"><div class="mk-name">${flag(p.nationality,14)} ${esc(p.name)}</div>
+    html+=`<div class="market-row" data-end="${a.ends_at}">${playerFace(p.id,p.nationality,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+      <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,14)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
         <div class="mk-sub">Meilleure offre : <b style="color:var(--green)">${fmtMoney(a.current_bid)}</b>${a.highest_bidder_name?` (${mine?'toi':esc(a.highest_bidder_name)})`:''}</div></div>
       <button class="btn btn-orange btn-small bid" data-id="${a.id}" data-amt="${next}">Enchérir ${fmtMoney(next)}</button></div>`;
