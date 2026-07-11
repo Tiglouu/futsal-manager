@@ -599,53 +599,83 @@ function playerFace(seed, cc, size){
 /* ============ Maillots (remplace les visages) ============ */
 const KIT_FONTS=['Arial Black, sans-serif','Impact, sans-serif','Georgia, serif','"Trebuchet MS",sans-serif','Verdana,sans-serif','"Times New Roman",serif','Tahoma,sans-serif','"Courier New",monospace','"Palatino Linotype",serif','"Franklin Gothic Medium",sans-serif','"Century Gothic",sans-serif','Rockwell,serif','"Gill Sans",sans-serif','Consolas,monospace','Optima,sans-serif','"Lucida Sans",sans-serif','Garamond,serif','"Segoe UI",sans-serif','Cambria,serif','"Arial Narrow",sans-serif'];
 const KIT_NUMFONTS=['Arial Black,sans-serif','Impact,sans-serif','"Courier New",monospace','Georgia,serif','Verdana,sans-serif','Rockwell,serif','Consolas,monospace','"Franklin Gothic Medium",sans-serif','"Century Gothic",sans-serif','Tahoma,sans-serif'];
-const KIT_PATTERNS=['solid','stripes','hoops','sash','halves','shoulders','pinstripe','chevron'];
+const KIT_PATTERNS=['solid','stripes','hoops','sash','halves','shoulders','pinstripe','chevron','gradient','quarters','band','centre','grid','diagonal','twotone','trim'];
+// Pool de sponsors procédural (~1200 combinaisons) pour l'affichage sur les maillots
+const SP_PRE=['Aero','Volt','Kaisen','Nord','Meri','Stra','Quant','Heli','Orbi','Ferro','Lumi','Vant','Nexa','Zeph','Sol','Hydra','Terra','Astra','Cyber','Onyx','Vertex','Pulse','Fusio','Delta','Omega','Titan','Nova','Apex','Ionic','Crest','Kilo','Baru','Zenit','Corvo','Halo','Fjord','Mirai','Vela','Rune','Atlas','Nimbus','Sable','Orion','Lyra','Kaido','Verde','Aztek','Boreal','Cinq','Duna'];
+const SP_SUF=['nex','tech','corp','wave','bank','air','energy','motors','tel','steel','pharma','group','labs','dynamics','logic','finance','mobile','foods','sport','matic','soft','line','flow','gaz','trust','systems','media','print','build','fresh'];
+function teamSponsor(team){
+  if(team && team.sponsor_name) return {name:String(team.sponsor_name).toUpperCase(), shape:['circle','triangle','bolt','square','diamond','hex','star','shield','ring'][(faceHash(team.sponsor_name)>>>0)%9], hue:(faceHash(team.sponsor_name)>>>0)%360};
+  const h=faceHash(String((team&&team.id)||'x')+'|sp')>>>0;
+  const name=(SP_PRE[h%SP_PRE.length]+SP_SUF[(h>>>5)%SP_SUF.length]).toUpperCase();
+  return {name, shape:['circle','triangle','bolt','square','diamond','hex','star','shield','ring'][(h>>>3)%9], hue:h%360};
+}
 function kitLum(hex){ const n=parseInt(hex.slice(1),16); return (0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255; }
-function kitInk(hex){ return kitLum(hex)>0.58?'#141414':'#f7f7f7'; }
+function kitInk(hex){ return kitLum(hex)>0.58?'#161616':'#f7f7f7'; }
 function kitNum(player){ if(player&&player.number) return player.number; return (faceHash(String(player&&player.id||'x'))%98)+1; }
 function kitLastName(name){ const p=String(name||'').trim().split(/\s+/); return (p[p.length-1]||name||'').toUpperCase(); }
 function playerKit(player, team, size, opts){
   opts=opts||{}; const s=size||46;
-  const uid='k'+(faceHash(String(player&&player.id||'x')+'|'+(team&&team.id||''))>>>0).toString(36);
+  const uid='k'+(faceHash(String(player&&player.id||'x')+'|'+(team&&team.id||'')+(opts.front?'F':'B'))>>>0).toString(36);
   const num=kitNum(player), name=kitLastName(player&&player.name);
-  // maillot national : drapeau
   if(opts.national){ const cc=(player&&player.nationality)||opts.cc;
-    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${s}px;height:${s}px;border-radius:10px;background:#f0f3f5;overflow:hidden;flex:0 0 auto">${flag(cc, Math.round(s*0.62))}</span>`; }
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${s}px;height:${s}px;border-radius:12px;background:#eef2f4;overflow:hidden;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)">${flag(cc, Math.round(s*0.66))}</span>`; }
   const hasKit = team && team.color1 && team.kit_season;
   let c1,c2,c3,c4,pattern,font,numfont;
-  if(!hasKit){ c1='#f2f2f2'; c2='#e4e4e4'; c3='#d0d0d0'; c4='#c8c8c8'; pattern='solid'; font=KIT_FONTS[0]; numfont=KIT_NUMFONTS[0]; }
+  if(!hasKit){ c1='#f3f3f3'; c2='#e6e6e6'; c3='#d2d2d2'; c4='#cccccc'; pattern='solid'; font=KIT_FONTS[0]; numfont=KIT_NUMFONTS[0]; }
   else { c1=team.color1; c2=team.color2||shade(c1,0.8); c3=team.color3||'#ffffff'; c4=team.color4||kitInk(c1);
     pattern=KIT_PATTERNS[(team.kit_pattern||0)%KIT_PATTERNS.length]; font=KIT_FONTS[(team.kit_font||0)%KIT_FONTS.length]; numfont=KIT_NUMFONTS[(team.kit_num_style||0)%KIT_NUMFONTS.length]; }
   const ink=hasKit?kitInk(c1):'#9aa0a6';
   const ex=40;
-  const torso=`M28 25 Q40 21 52 25 L54 31 Q55 47 53 63 Q40 66.5 27 63 Q25 47 26 31 Z`;
-  const slL=`M28 25 L14 30 L18 41 L27 34 Z`, slR=`M52 25 L66 30 L62 41 L53 34 Z`;
-  let fill='';
+  // maillot plus grand et net
+  const torso=`M22 20 Q40 15 58 20 L62 28 Q64 48 60 68 Q40 72 20 68 Q16 48 18 28 Z`;
+  const slL=`M22 20 L8 27 L13 42 L21 32 Z`, slR=`M58 20 L72 27 L67 42 L59 32 Z`;
+  let defs=`<clipPath id="${uid}c"><path d="${torso}"/></clipPath>`;
   const P=(d,f)=>`<path d="${d}" fill="${f}"/>`;
-  if(pattern==='solid')      fill=P(torso,c1);
-  else if(pattern==='stripes')  fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,38,46].map(x=>`<rect x="${x}" y="20" width="4" height="48" fill="${c2}"/>`).join('')}</g>`;
-  else if(pattern==='hoops')    fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,40,50,60].map(y=>`<rect x="24" y="${y}" width="32" height="4" fill="${c2}"/>`).join('')}</g>`;
-  else if(pattern==='sash')     fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M24 30 L56 58 L56 64 L24 36 Z" fill="${c3}"/></g>`;
-  else if(pattern==='halves')   fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><rect x="40" y="20" width="20" height="48" fill="${c2}"/></g>`;
-  else if(pattern==='shoulders')fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M26 26 Q40 22 54 26 L54 33 Q40 29 26 33 Z" fill="${c2}"/></g>`;
-  else if(pattern==='pinstripe')fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)">${[30,34,38,42,46,50].map(x=>`<rect x="${x}" y="20" width="1.1" height="48" fill="${c3}" opacity="0.6"/>`).join('')}</g>`;
-  else if(pattern==='chevron')  fill=`${P(torso,c1)}<g clip-path="url(#${uid}c)"><path d="M24 40 L40 50 L56 40 L56 45 L40 55 L24 45 Z" fill="${c2}"/></g>`;
+  const CL=(inner)=>`<g clip-path="url(#${uid}c)">${inner}</g>`;
+  let fill=P(torso,c1);
+  if(pattern==='stripes')   fill+=CL([26,34,42,50,58].map(x=>`<rect x="${x}" y="14" width="4.5" height="60" fill="${c2}"/>`).join(''));
+  else if(pattern==='hoops')     fill+=CL([28,38,48,58,68].map(y=>`<rect x="14" y="${y}" width="52" height="5" fill="${c2}"/>`).join(''));
+  else if(pattern==='sash')      fill+=CL(`<path d="M16 30 L60 66 L60 74 L16 38 Z" fill="${c3}"/>`);
+  else if(pattern==='halves')    fill+=CL(`<rect x="40" y="14" width="26" height="60" fill="${c2}"/>`);
+  else if(pattern==='shoulders') fill+=CL(`<path d="M18 22 Q40 16 62 22 L62 32 Q40 27 18 32 Z" fill="${c2}"/>`);
+  else if(pattern==='pinstripe') fill+=CL([26,31,36,41,46,51,56].map(x=>`<rect x="${x}" y="14" width="1.3" height="60" fill="${c3}" opacity="0.6"/>`).join(''));
+  else if(pattern==='chevron')   fill+=CL(`<path d="M14 44 L40 58 L66 44 L66 51 L40 65 L14 51 Z" fill="${c2}"/>`);
+  else if(pattern==='gradient'){ defs+=`<linearGradient id="${uid}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient>`; fill=P(torso,`url(#${uid}g)`); }
+  else if(pattern==='quarters')  fill+=CL(`<rect x="40" y="14" width="26" height="27" fill="${c2}"/><rect x="14" y="41" width="26" height="33" fill="${c2}"/>`);
+  else if(pattern==='band')      fill+=CL(`<rect x="14" y="40" width="52" height="9" fill="${c3}"/>`);
+  else if(pattern==='centre')    fill+=CL(`<rect x="34" y="14" width="12" height="60" fill="${c2}"/>`);
+  else if(pattern==='grid')      fill+=CL([26,36,46,56].map(x=>`<rect x="${x}" y="14" width="1.2" height="60" fill="${c3}" opacity="0.5"/>`).join('')+[30,42,54,66].map(y=>`<rect x="14" y="${y}" width="52" height="1.2" fill="${c3}" opacity="0.5"/>`).join(''));
+  else if(pattern==='diagonal')  fill+=CL([-20,-6,8,22,36].map(o=>`<path d="M${16+o} 14 L${36+o} 14 L${20+o} 74 L${o} 74 Z" fill="${c2}" opacity="0.9"/>`).join(''));
+  else if(pattern==='twotone')   fill+=CL(`<rect x="14" y="44" width="52" height="30" fill="${c2}"/>`);
+  else if(pattern==='trim')      fill+=CL(`<rect x="18" y="14" width="4" height="60" fill="${c3}"/><rect x="58" y="14" width="4" height="60" fill="${c3}"/>`);
+
+  const collar = (faceHash(uid)%2===0)
+    ? `<path d="M33 18 Q40 25 47 18 L44 22 Q40 27 36 22 Z" fill="${c3}"/>`
+    : `<path d="M32 18 Q40 21 48 18 L48 22 Q40 25 32 22 Z" fill="${c3}"/>`;
+  const cuffs=`<rect x="9" y="30" width="9" height="3" fill="${c3}" opacity="0.85" transform="rotate(24 13 31)"/><rect x="62" y="30" width="9" height="3" fill="${c3}" opacity="0.85" transform="rotate(-24 67 31)"/>`;
 
   let content='';
   if(opts.front){
-    content=`<text x="${ex}" y="40" text-anchor="middle" font-family="${font}" font-size="5.5" fill="${ink}" opacity="0.9" font-weight="bold">${esc(opts.sponsor||'')}</text>
-      <text x="${ex}" y="58" text-anchor="middle" font-family="${numfont}" font-size="15" font-weight="bold" fill="${ink}">${num}</text>`;
+    const sp=opts.sponsor||teamSponsor(team||{});
+    const frameW=26, frameH=18, fx=ex-frameW/2, fy=34;
+    content=`<g transform="translate(${fx},${fy})">
+        <rect x="0" y="0" width="${frameW}" height="${frameH}" rx="3" fill="#ffffff" opacity="0.92"/>
+        <rect x="0" y="0" width="${frameW}" height="${frameH}" rx="3" fill="none" stroke="${c3}" stroke-width="1"/>
+        <g transform="translate(${frameW/2-7},1.2) scale(0.4)">${(typeof sponsorLogo==='function')?sponsorLogo(sp.shape,sp.hue,34):''}</g>
+        <text x="${frameW/2}" y="${frameH-2.5}" text-anchor="middle" font-family="${font}" font-size="3.4" font-weight="bold" fill="#222">${esc((sp.name||'').slice(0,12))}</text>
+      </g>
+      <text x="${ex}" y="66" text-anchor="middle" font-family="${numfont}" font-size="13" font-weight="bold" fill="${ink}">${num}</text>`;
   } else if(hasKit){
-    content=`<path id="${uid}arc" d="M28 34 Q40 28 52 34" fill="none"/>
-      <text font-family="${font}" font-size="6" font-weight="bold" fill="${ink}"><textPath href="#${uid}arc" startOffset="50%" text-anchor="middle">${esc(name).slice(0,11)}</textPath></text>
-      <text x="${ex}" y="56" text-anchor="middle" font-family="${numfont}" font-size="19" font-weight="bold" fill="${ink}">${num}</text>`;
+    content=`<path id="${uid}arc" d="M25 32 Q40 24 55 32" fill="none"/>
+      <text font-family="${font}" font-size="7" font-weight="bold" fill="${ink}"><textPath href="#${uid}arc" startOffset="50%" text-anchor="middle">${esc(name).slice(0,12)}</textPath></text>
+      <text x="${ex}" y="58" text-anchor="middle" font-family="${numfont}" font-size="24" font-weight="bold" fill="${ink}">${num}</text>`;
   }
   return `<svg viewBox="0 0 80 80" width="${s}" height="${s}" style="flex:0 0 auto">
-    <defs><clipPath id="${uid}c"><path d="${torso}"/></clipPath></defs>
-    ${P(slL,c2)}${P(slR,c2)}
+    <defs>${defs}</defs>
+    ${P(slL,c2)}${P(slR,c2)}${cuffs}
     ${fill}
-    <path d="M34 23 Q40 28 46 23 L44 26 Q40 30 36 26 Z" fill="${c3}"/>
-    <path d="${torso}" fill="none" stroke="${shade(c1,0.7)}" stroke-width="0.6" opacity="0.4"/>
+    ${collar}
+    <path d="${torso}" fill="none" stroke="${shade(c1,0.68)}" stroke-width="0.7" opacity="0.45"/>
     ${content}
   </svg>`;
 }
@@ -808,7 +838,7 @@ async function openTeamModal(teamId){
     : '<span style="color:var(--muted)">Aucun trophée</span>';
   let html=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div class="team-hero" style="gap:12px">${flag(t.country_code,34)}<div><h2 style="font-size:22px">${esc(t.name)}</h2>
+      <div class="team-hero" style="gap:12px">${flag(t.country_code,34)}${playerKit({id:t.id+'-kit',name:t.name,number:10},t,68,{front:true,sponsor:teamSponsor(t)})}<div><h2 style="font-size:22px">${esc(t.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${esc(t.country_name)} · Note moy. ${avg} · Valeur ${fmtMoney(squadValue)}</div></div></div>
       <button class="logout" id="closeModal">Fermer</button></div>
     <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
@@ -818,7 +848,7 @@ async function openTeamModal(teamId){
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
   players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
-    html+=`<div class="player">${playerKit(p,t,34)}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+    html+=`<div class="player">${playerKit(p,t,46)}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${canRecruit?`<button class="btn btn-small offer-btn" data-id="${p.id}" data-fee="${fee}" style="margin-left:10px">Proposer · ${fmtMoney(fee)}</button>`:''}</div>`; });
   html+=`<div id="offerMsg" class="msg"></div>`;
@@ -863,7 +893,7 @@ async function openPlayerActionModal(playerId){
   const conf=Math.round(p.confidence??70), form=Math.round(p.form??70);
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div style="display:flex;gap:12px;align-items:center">${playerKit(p,club,64)}
+      <div style="display:flex;gap:12px;align-items:center">${playerKit(p,club,104)}
       <div><h2 style="font-size:22px">${flag(p.nationality,18)} ${esc(p.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${p.position} · ${p.age} ans · <span class="${cls}">Note ${p.rating}</span></div>
       <div class="meta" style="color:var(--muted);font-size:12px;margin-top:2px">${club?flag(club.country_code,12)+' '+esc(club.name):'Agent libre'}${own?` · 💰 ${fmtMoney(p.salary||0)}/saison · 📄 S${p.contract_until||'?'}`:''}</div></div></div>
@@ -932,11 +962,12 @@ async function openMatchModal(matchId){
   const pids=[...new Set(ev.flatMap(e=>[e.scorer_id,e.assist_id]).filter(Boolean))];
   const pmap={}; if(pids.length){ const {data:pl}=await supa.from("players").select("id,name,nationality").in("id",pids); (pl||[]).forEach(p=>pmap[p.id]=p); }
 
-  let homeLabel, awayLabel, homeCode, awayCode;
+  let homeLabel, awayLabel, homeCode, awayCode, homeTeamObj=null, awayTeamObj=null;
   if(isNation){ homeCode=m.home_country; awayCode=m.away_country; homeLabel=countryName(m.home_country); awayLabel=countryName(m.away_country); }
   else {
-    const { data:tt } = await supa.from("teams").select("id,name,country_code").in("id",[m.home_team_id,m.away_team_id]);
+    const { data:tt } = await supa.from("teams").select("id,name,country_code,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").in("id",[m.home_team_id,m.away_team_id]);
     const tm={}; (tt||[]).forEach(t=>tm[t.id]=t);
+    homeTeamObj=tm[m.home_team_id]||null; awayTeamObj=tm[m.away_team_id]||null;
     homeCode=tm[m.home_team_id]?.country_code; awayCode=tm[m.away_team_id]?.country_code;
     homeLabel=tm[m.home_team_id]?.name||'?'; awayLabel=tm[m.away_team_id]?.name||'?';
   }
@@ -949,6 +980,48 @@ async function openMatchModal(matchId){
   ev.forEach(e=>{ if(e.scorer_id) contrib[e.scorer_id]=(contrib[e.scorer_id]||0)+2; if(e.assist_id) contrib[e.assist_id]=(contrib[e.assist_id]||0)+1; });
   let mvpId=null, best=0; for(const k in contrib){ if(contrib[k]>best){ best=contrib[k]; mvpId=k; } }
   const mvpName = mvpId && pmap[mvpId] ? pmap[mvpId].name : null;
+
+  if(!m.played && !isNation){
+    const mm = await supa.rpc("team_matchup",{ p_home:m.home_team_id, p_away:m.away_team_id });
+    const d = (mm&&mm.data)||{}; const hs=+d.hstr||50, as=+d.astr||50, rH=hs/(hs+as);
+    let draw=Math.round(18*(1-Math.abs(rH-0.5)*2)+6);
+    let hw=Math.round(rH*(100-draw))+4; let aw=100-draw-hw; if(aw<0){hw+=aw;aw=0;} if(hw<0){aw+=hw;hw=0;}
+    const hb=d.home_best, ab=d.away_best;
+    const bestCard=(p,align)=> !p ? '' : `<div style="text-align:${align};font-size:12px">
+        <div style="color:var(--muted)">⭐ Meilleur joueur</div>
+        <div class="player-link" data-pid="${p.id}" style="cursor:pointer"><b>${esc(p.name)}</b></div>
+        <div style="color:var(--muted)">${p.position} · <span class="${ratingClass(p.rating)}">${p.rating}</span></div></div>`;
+    const when = m.scheduled_at ? new Date(m.scheduled_at).toLocaleString('fr-FR',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'À venir';
+    ov.innerHTML=`<div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1"><div style="text-align:center;font-size:15px;font-weight:600">${esc(homeLabel)} <span style="color:var(--muted)">vs</span> ${esc(awayLabel)}</div>
+        <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:2px">📅 ${esc(when)}</div></div>
+        <button class="logout" id="closeMatch">Fermer</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+        <div style="flex:1;text-align:center">${playerKit({id:m.home_team_id+'k',name:homeLabel,number:10},homeTeamObj,84,{front:true,sponsor:teamSponsor(homeTeamObj||{id:m.home_team_id})})}
+          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(homeCode,14)} ${esc(homeLabel)}</div></div>
+        <div style="flex:0 0 92px;text-align:center">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Pronostic</div>
+          <div style="font-size:12px;display:flex;flex-direction:column;gap:3px">
+            <div style="color:var(--green)"><b>${hw}%</b></div>
+            <div style="height:7px;background:var(--board);border-radius:4px;overflow:hidden;display:flex">
+              <div style="width:${hw}%;background:var(--green)"></div><div style="width:${draw}%;background:#f2d347"></div><div style="width:${aw}%;background:var(--danger)"></div></div>
+            <div style="color:var(--muted)">Nul ${draw}%</div>
+            <div style="color:var(--danger)"><b>${aw}%</b></div>
+          </div>
+        </div>
+        <div style="flex:1;text-align:center">${playerKit({id:m.away_team_id+'k',name:awayLabel,number:10},awayTeamObj,84,{front:true,sponsor:teamSponsor(awayTeamObj||{id:m.away_team_id})})}
+          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(awayCode,14)} ${esc(awayLabel)}</div></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:14px">
+        <div style="flex:1">${bestCard(hb,'left')}</div>
+        <div style="width:1px;background:var(--line)"></div>
+        <div style="flex:1">${bestCard(ab,'right')}</div>
+      </div></div>`;
+    $("closeMatch").addEventListener("click", ()=>ov.remove());
+    return;
+  }
 
   ov.innerHTML=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
@@ -1252,9 +1325,10 @@ async function renderNews(){
 
   const readColors=()=>[1,2,3,4].map(i=>$("kc"+i).value);
   const previewTeam=()=>{ const c=readColors(); return {id:myTeam.id,color1:c[0],color2:c[1],color3:c[2],color4:c[3],kit_pattern:(t.kit_pattern||0),kit_font:+$("kfont").value,kit_num_style:+$("knum").value,kit_season:(t.kit_season||1)}; };
+  const spObj=teamSponsor(t.sponsor_id?{sponsor_name:sponsorName}:{id:myTeam.id});
   const refreshPrev=()=>{ const pt=previewTeam();
-    $("kPrevBack").innerHTML=playerKit(previewPlayer, pt, 92);
-    $("kPrevFront").innerHTML=playerKit(previewPlayer, pt, 92, {front:true, sponsor:sponsorName}); };
+    $("kPrevBack").innerHTML=playerKit(previewPlayer, pt, 108);
+    $("kPrevFront").innerHTML=playerKit(previewPlayer, pt, 108, {front:true, sponsor:spObj}); };
   refreshPrev();
   [1,2,3,4].forEach(i=>$("kc"+i).addEventListener("input",refreshPrev));
   $("kfont").addEventListener("change",refreshPrev); $("knum").addEventListener("change",refreshPrev);
@@ -2105,7 +2179,7 @@ function renderNatRows(isCoach){
   list.forEach(p=>{
     const on=natStarters.has(p.id), cls=ratingClass(p.rating);
     html+=`<div class="player" style="${isCoach&&!on?'opacity:.55':''}">
-      ${playerKit(p,null,34,{national:true})}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
+      ${playerKit(p,null,44,{national:true})}<span class="pos">${p.position}</span><span class="pname player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,13)} ${esc(p.name)}</span>
       <span class="page">${p.age} ans</span><span class="rating ${cls}">${p.rating}</span>
       ${isCoach?`<button class="btn btn-small nat-toggle" data-id="${p.id}" style="margin-left:10px;${on?'':'background:var(--panel-2);color:var(--muted)'}">${on?'Titulaire':'Banc'}</button>`:''}</div>`;
   });
@@ -2598,7 +2672,7 @@ async function loadMercato(){
   let html="";
   list.forEach(p=>{
     const club=bmap[p.team_id], price=p.rating*15000, cls=ratingClass(p.rating);
-    html+=`<div class="market-row">${playerKit(p,club,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+    html+=`<div class="market-row">${playerKit(p,club,52)}<span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,12)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · ${club?flag(club.country_code,12)+' '+esc(club.name):'—'}</div></div>
       <div style="text-align:right"><div class="mk-price">${fmtMoney(price)}</div>
@@ -2638,7 +2712,7 @@ async function loadAuctions(){
   active.forEach(a=>{
     const p=pmap[a.player_id]; if(!p) return;
     const next=a.current_bid+50000, mine=a.highest_bidder===myUserId, cls=ratingClass(p.rating);
-    html+=`<div class="market-row" data-end="${a.ends_at}">${playerKit(p,null,40)}<span class="mk-rating ${cls}">${p.rating}</span>
+    html+=`<div class="market-row" data-end="${a.ends_at}">${playerKit(p,null,52)}<span class="mk-rating ${cls}">${p.rating}</span>
       <div class="mk-info"><div class="mk-name player-link" data-pid="${p.id}" style="cursor:pointer">${flag(p.nationality,14)} ${esc(p.name)}</div>
         <div class="mk-sub">${p.position} · ${p.age} ans · <span class="countdown">…</span></div>
         <div class="mk-sub">Meilleure offre : <b style="color:var(--green)">${fmtMoney(a.current_bid)}</b>${a.highest_bidder_name?` (${mine?'toi':esc(a.highest_bidder_name)})`:''}</div></div>
