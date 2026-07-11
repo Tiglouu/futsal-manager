@@ -58,6 +58,10 @@
   .bkt-win{color:var(--text)}
   .bkt-win span{color:var(--green);font-weight:600}
   .bkt-legs{font-size:10px;color:var(--muted);text-align:right;font-family:'Space Mono',monospace}
+  .bkt-legs{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+  .bkt-leg{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:2px}
+  .bkt-leg-l{color:var(--muted);text-transform:uppercase;font-size:9px;letter-spacing:.5px}
+  .bkt-when{color:var(--orange)}
   .notif-bar{padding:9px 20px;font-size:13px;background:#1e3a5f;color:#cfe6ff;border-bottom:1px solid #2b4d78;text-align:center;cursor:pointer}
   .notif-bar b{color:#fff}
   .notif-bar:hover{background:#244771}
@@ -1994,11 +1998,16 @@ function clBracketHtml(koMatches, tmap){
       const aTot=(l1.played?l1.home_score:0)+(l2&&l2.played?l2.away_score:0);
       const bTot=(l1.played?l1.away_score:0)+(l2&&l2.played?l2.home_score:0);
       const aw=done&&aTot>bTot, bw=done&&bTot>aTot;
-      const legs = (l1.scheduled_at&&!done) ? new Date(l1.scheduled_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : `${l1.played?l1.home_score+'-'+l1.away_score:'–'} / ${l2&&l2.played?l2.home_score+'-'+l2.away_score:'–'}`;
+      const fmtLeg=(m,inv)=>{
+        if(!m) return '<span class="bkt-leg"><span class="bkt-leg-l">—</span></span>';
+        const d=m.scheduled_at?new Date(m.scheduled_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+        const sc=m.played?`${m.home_score}-${m.away_score}`:`<span class="bkt-when">${esc(d)||'à venir'}</span>`;
+        return `<span class="bkt-leg"><span class="bkt-leg-l">${inv?'retour':'aller'}</span>${sc}</span>`;
+      };
       cells+=`<div class="bkt-tie">
         <div class="bkt-team ${aw?'bkt-win':''}">${flag(A.country_code,14)}<span>${esc(A.name)}</span><b>${done?aTot:''}</b></div>
         <div class="bkt-team ${bw?'bkt-win':''}">${flag(B.country_code,14)}<span>${esc(B.name)}</span><b>${done?bTot:''}</b></div>
-        <div class="bkt-legs">${legs}</div></div>`;
+        <div class="bkt-legs">${fmtLeg(l1,false)}${fmtLeg(l2,true)}</div></div>`;
     });
     cols+=`<div class="bkt-col"><div class="bkt-round">${esc(label)}</div>${cells}</div>`;
   });
