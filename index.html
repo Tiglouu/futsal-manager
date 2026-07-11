@@ -2128,7 +2128,8 @@ function clBracketHtml(koMatches, tmap){
         if(!m) return '<span class="bkt-leg"><span class="bkt-leg-l">—</span></span>';
         const d=m.scheduled_at?new Date(m.scheduled_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
         const sc=m.played?`${m.home_score}-${m.away_score}`:`<span class="bkt-when">${esc(d)||'à venir'}</span>`;
-        return `<span class="bkt-leg"><span class="bkt-leg-l">${inv?'retour':'aller'}</span>${sc}</span>`;
+        const clk=m.played?`match-link" data-match="${m.id}" style="cursor:pointer`:'';
+        return `<span class="bkt-leg ${clk}"><span class="bkt-leg-l">${inv?'retour':'aller'}</span>${sc}</span>`;
       };
       cells+=`<div class="bkt-tie">
         <div class="bkt-team ${aw?'bkt-win':''}">${flag(A.country_code,14)}<span>${esc(A.name)}</span><b>${done?aTot:''}</b></div>
