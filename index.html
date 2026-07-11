@@ -47,6 +47,17 @@
   .season-clock{padding:7px 20px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--panel);text-align:center;font-family:'Space Mono',monospace}
   .season-clock b{color:var(--orange)}
   .badge{display:inline-block;background:#ff4444;color:#fff;font-size:10px;font-weight:700;line-height:1;border-radius:9px;padding:2px 5px;margin-left:5px;vertical-align:middle;min-width:8px;text-align:center}
+  .bracket-wrap{overflow-x:auto;padding-bottom:8px}
+  .bracket{display:flex;gap:16px;min-width:min-content}
+  .bkt-col{display:flex;flex-direction:column;justify-content:space-around;gap:14px;min-width:170px}
+  .bkt-round{font-size:12px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;text-align:center}
+  .bkt-tie{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px}
+  .bkt-team{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+  .bkt-team span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96px}
+  .bkt-team b{font-family:'Space Mono',monospace;color:var(--text)}
+  .bkt-win{color:var(--text)}
+  .bkt-win span{color:var(--green);font-weight:600}
+  .bkt-legs{font-size:10px;color:var(--muted);text-align:right;font-family:'Space Mono',monospace}
   .notif-bar{padding:9px 20px;font-size:13px;background:#1e3a5f;color:#cfe6ff;border-bottom:1px solid #2b4d78;text-align:center;cursor:pointer}
   .notif-bar b{color:#fff}
   .notif-bar:hover{background:#244771}
@@ -1966,6 +1977,33 @@ async function renderSuperCup(){
   });
   host.innerHTML=html+`</div>`;
 }
+function clBracketHtml(koMatches, tmap){
+  if(!koMatches.length) return '<div class="empty">Phases finales à venir.</div>';
+  const rounds=[...new Set(koMatches.map(m=>m.round_idx))].sort((a,b)=>a-b);
+  let cols='';
+  rounds.forEach(ri=>{
+    const rm=koMatches.filter(m=>m.round_idx===ri);
+    const label=rm[0].round_label||('Tour '+ri);
+    const pairs=[...new Set(rm.map(m=>m.pair_idx))].sort((a,b)=>a-b);
+    let cells='';
+    pairs.forEach(p=>{
+      const l1=rm.find(m=>m.pair_idx===p&&m.leg===1), l2=rm.find(m=>m.pair_idx===p&&m.leg===2);
+      if(!l1) return;
+      const A=tmap[l1.home_team_id], B=tmap[l1.away_team_id]; if(!A||!B) return;
+      const done=l1.played&&(!l2||l2.played);
+      const aTot=(l1.played?l1.home_score:0)+(l2&&l2.played?l2.away_score:0);
+      const bTot=(l1.played?l1.away_score:0)+(l2&&l2.played?l2.home_score:0);
+      const aw=done&&aTot>bTot, bw=done&&bTot>aTot;
+      const legs = (l1.scheduled_at&&!done) ? new Date(l1.scheduled_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : `${l1.played?l1.home_score+'-'+l1.away_score:'–'} / ${l2&&l2.played?l2.home_score+'-'+l2.away_score:'–'}`;
+      cells+=`<div class="bkt-tie">
+        <div class="bkt-team ${aw?'bkt-win':''}">${flag(A.country_code,14)}<span>${esc(A.name)}</span><b>${done?aTot:''}</b></div>
+        <div class="bkt-team ${bw?'bkt-win':''}">${flag(B.country_code,14)}<span>${esc(B.name)}</span><b>${done?bTot:''}</b></div>
+        <div class="bkt-legs">${legs}</div></div>`;
+    });
+    cols+=`<div class="bkt-col"><div class="bkt-round">${esc(label)}</div>${cells}</div>`;
+  });
+  return `<div class="bracket-wrap"><div class="bracket">${cols}</div></div>`;
+}
 async function loadCL(){
   const host=$("clBody"); if(!host) return;
   host.innerHTML='<div class="loading">Chargement…</div>';
@@ -2069,27 +2107,7 @@ async function loadCL(){
   }
 
   else {
-    const rounds=[...new Set(koMatches.map(m=>m.round_idx))].sort((a,b)=>a-b);
-    rounds.forEach(ri=>{
-      const rm=koMatches.filter(m=>m.round_idx===ri);
-      inner+=`<div class="card" style="margin:0 0 10px"><div style="font-weight:600;margin-bottom:8px">${esc(rm[0].round_label)}</div>`;
-      const pairs=[...new Set(rm.map(m=>m.pair_idx))].sort((a,b)=>a-b);
-      pairs.forEach(p=>{
-        const l1=rm.find(m=>m.pair_idx===p&&m.leg===1), l2=rm.find(m=>m.pair_idx===p&&m.leg===2);
-        if(!l1) return;
-        const A=tmap[l1.home_team_id], B=tmap[l1.away_team_id]; if(!A||!B) return;
-        const done=l1.played&&(!l2||l2.played);
-        const aTot=(l1.played?l1.home_score:0)+(l2&&l2.played?l2.away_score:0);
-        const bTot=(l1.played?l1.away_score:0)+(l2&&l2.played?l2.home_score:0);
-        const legs=`aller ${l1.played?l1.home_score+'-'+l1.away_score:'–'} · retour ${l2&&l2.played?l2.home_score+'-'+l2.away_score:'–'}`;
-        const win = done ? (aTot>bTot?'A':(bTot>aTot?'B':'')) : '';
-        inner+=`<div class="match"><span class="side ${win==='A'?'me':''}">${flag(A.country_code,15)}<span class="nm">${esc(A.name)}</span></span>
-          <span class="score">${done?aTot+' – '+bTot:'<span style="color:var(--muted);font-size:12px">VS</span>'}</span>
-          <span class="side away ${win==='B'?'me':''}"><span class="nm">${esc(B.name)}</span>${flag(B.country_code,15)}</span></div>
-          <div style="font-size:11px;color:var(--muted);text-align:center;margin:-2px 0 8px">${legs}</div>`;
-      });
-      inner+=`</div>`;
-    });
+    inner+=clBracketHtml(koMatches, tmap);
   }
 
   if(comp.stage!=='done') inner+=`<p style="color:var(--muted);font-size:12px">Compétition en cours — elle avance automatiquement.</p>`;
