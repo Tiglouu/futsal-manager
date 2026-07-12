@@ -830,6 +830,16 @@ async function openTeamModal(teamId){
   ]);
   const tmatches=(mR.data||[]).sort((a,b)=>(b.matchday||0)-(a.matchday||0));
   let streak=0; for(const m of tmatches){ const home=m.home_team_id===teamId; const won=home?m.home_score>m.away_score:m.away_score>m.home_score; if(won) streak++; else break; }
+  const form5=tmatches.slice(0,5).map(m=>{ const home=m.home_team_id===teamId; const my=home?m.home_score:m.away_score, op=home?m.away_score:m.home_score; return my>op?'V':(my<op?'D':'N'); }).reverse();
+  let h2h=null;
+  if(myTeam && teamId!==myTeam.id){
+    const {data:hh}=await supa.from("matches").select("home_team_id,away_team_id,home_score,away_score")
+      .or(`and(home_team_id.eq.${myTeam.id},away_team_id.eq.${teamId}),and(home_team_id.eq.${teamId},away_team_id.eq.${myTeam.id})`).eq("played",true);
+    let w=0,d=0,l=0,best=null;
+    (hh||[]).forEach(m=>{ const meHome=m.home_team_id===myTeam.id; const mine=meHome?m.home_score:m.away_score, opp=meHome?m.away_score:m.home_score;
+      if(mine>opp)w++; else if(mine<opp)l++; else d++; const diff=mine-opp; if(!best||diff>best.diff) best={diff,s:`${mine}-${opp}`}; });
+    h2h={w,d,l,n:(hh||[]).length,best};
+  }
   const clubCats=['Championnat','Coupe nationale','Ligue des champions','Super-Coupe'];
   const trophies=(hR.data||[]).filter(x=>clubCats.includes(x.category));
   const avg=players.length?Math.round(players.reduce((s,p)=>s+p.rating,0)/players.length):0;
@@ -853,10 +863,14 @@ async function openTeamModal(teamId){
         <div style="display:flex;gap:6px;margin-top:10px">${[t.color1,t.color2,t.color3,t.color4].filter(Boolean).map(c=>`<span style="width:22px;height:22px;border-radius:5px;background:${c};box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></span>`).join('')||'<span style="font-size:12px;color:var(--muted)">Couleurs par défaut</span>'}</div>
       </div>
     </div>
-    <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+    <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px;align-items:center">
       <span>🔥 Série : <b>${streak}</b> victoire${streak>1?'s':''}</span>
+      ${form5.length?`<span style="display:inline-flex;align-items:center;gap:6px">Forme : ${formHtml(form5)}</span>`:''}
       <span>🏆 Palmarès : ${trophyHtml}</span>
     </div>
+    ${h2h?`<div style="margin-top:8px;font-size:13px;background:var(--board);border-radius:10px;padding:8px 10px">
+      ⚔️ <b>Face à toi</b> : ${h2h.n?`<span style="color:var(--green)">${h2h.w}V</span> · ${h2h.d}N · <span style="color:var(--danger)">${h2h.l}D</span>${h2h.best&&h2h.best.diff>0?` <span style="color:var(--muted)">· ton meilleur score ${h2h.best.s}</span>`:''}`:'<span style="color:var(--muted)">jamais affrontés</span>'}
+    </div>`:''}
     <div style="margin-top:14px">`;
   const canRecruit = t.is_bot && myTeam && t.id!==myTeam.id;
   players.forEach(p=>{ const cls=ratingClass(p.rating); const fee=p.rating*15000;
@@ -977,7 +991,7 @@ async function openMatchModal(matchId){
   let homeLabel, awayLabel, homeCode, awayCode, homeTeamObj=null, awayTeamObj=null;
   if(isNation){ homeCode=m.home_country; awayCode=m.away_country; homeLabel=countryName(m.home_country); awayLabel=countryName(m.away_country); }
   else {
-    const { data:tt } = await supa.from("teams").select("id,name,country_code,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").in("id",[m.home_team_id,m.away_team_id]);
+    const { data:tt } = await supa.from("teams").select("id,name,country_code,manager_pseudo,is_bot,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").in("id",[m.home_team_id,m.away_team_id]);
     const tm={}; (tt||[]).forEach(t=>tm[t.id]=t);
     homeTeamObj=tm[m.home_team_id]||null; awayTeamObj=tm[m.away_team_id]||null;
     homeCode=tm[m.home_team_id]?.country_code; awayCode=tm[m.away_team_id]?.country_code;
@@ -1012,7 +1026,7 @@ async function openMatchModal(matchId){
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:16px">
         <div style="flex:1;text-align:center">${playerKit({id:m.home_team_id+'k',name:homeLabel,number:10},homeTeamObj,84,{front:true,sponsor:teamSponsor(homeTeamObj||{id:m.home_team_id})})}
-          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(homeCode,14)} ${esc(homeLabel)}</div></div>
+          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(homeCode,14)} ${esc(homeLabel)}</div><div style="font-size:11px;color:var(--muted)">${homeTeamObj&&!homeTeamObj.is_bot?'👤 '+esc(homeTeamObj.manager_pseudo||'Manager'):'🤖 IA'}</div></div>
         <div style="flex:0 0 92px;text-align:center">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Pronostic</div>
           <div style="font-size:12px;display:flex;flex-direction:column;gap:3px">
@@ -1024,7 +1038,7 @@ async function openMatchModal(matchId){
           </div>
         </div>
         <div style="flex:1;text-align:center">${playerKit({id:m.away_team_id+'k',name:awayLabel,number:10},awayTeamObj,84,{front:true,sponsor:teamSponsor(awayTeamObj||{id:m.away_team_id})})}
-          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(awayCode,14)} ${esc(awayLabel)}</div></div>
+          <div style="font-weight:600;font-size:13px;margin-top:4px">${flag(awayCode,14)} ${esc(awayLabel)}</div><div style="font-size:11px;color:var(--muted)">${awayTeamObj&&!awayTeamObj.is_bot?'👤 '+esc(awayTeamObj.manager_pseudo||'Manager'):'🤖 IA'}</div></div>
       </div>
       <div style="display:flex;gap:12px;margin-top:14px">
         <div style="flex:1">${bestCard(hb,'left')}</div>
@@ -1778,7 +1792,7 @@ function tableHtml(rows, myId, division){
       else   { if(i===0) zone="qualif"; else if(i===rows.length-1) zone="releg"; }
     }
     h+=`<tr class="${me?'me ':''}${zone}"><td class="num rank">${i+1}</td>
-      <td class="left"><div class="tname team-link" data-team="${r.team.id}">${flag(r.team.country_code,16)}<span>${esc(r.team.name)}</span></div></td>
+      <td class="left"><div class="tname team-link" data-team="${r.team.id}">${flag(r.team.country_code,16)}<span>${esc(r.team.name)}</span>${r.team.is_bot?'':`<span title="Manager : ${esc(r.team.manager_pseudo||'Manager')}" style="font-size:10px;margin-left:4px">👤</span>`}</div></td>
       <td class="num">${r.pj}</td><td class="num hide">${r.g}</td><td class="num hide">${r.n}</td><td class="num hide">${r.p}</td>
       <td class="num hide">${d>0?'+':''}${d}</td><td class="num hide">${formHtml(r.form)}</td><td class="num"><strong>${r.pts}</strong></td></tr>`;
   });
