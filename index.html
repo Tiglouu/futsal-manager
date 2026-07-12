@@ -820,6 +820,9 @@ async function openTeamModal(teamId){
     supa.from("players").select("*").eq("team_id", teamId).order("rating",{ascending:false})
   ]);
   const t=tR.data, players=pR.data||[];
+  let teamSpName = null;
+  if(t && t.sponsor_id){ const {data:sp}=await supa.from("sponsors").select("name").eq("id",t.sponsor_id).single(); if(sp) teamSpName=sp.name; }
+  const teamSp = teamSpName ? {name:teamSpName.toUpperCase(), shape:['circle','triangle','bolt','square','diamond','hex','star','shield','ring'][(faceHash(teamSpName)>>>0)%9], hue:(faceHash(teamSpName)>>>0)%360} : teamSponsor(t||{});
   if(!t){ ov.remove(); return; }
   const [mR, hR]=await Promise.all([
     supa.from("matches").select("home_team_id,away_team_id,home_score,away_score,matchday,played").or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`).eq("played",true),
@@ -838,9 +841,17 @@ async function openTeamModal(teamId){
     : '<span style="color:var(--muted)">Aucun trophée</span>';
   let html=`<div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div class="team-hero" style="gap:12px">${flag(t.country_code,34)}${playerKit({id:t.id+'-kit',name:t.name,number:10},t,68,{front:true,sponsor:teamSponsor(t)})}<div><h2 style="font-size:22px">${esc(t.name)}</h2>
+      <div class="team-hero" style="gap:12px">${flag(t.country_code,34)}<div><h2 style="font-size:22px">${esc(t.name)}</h2>
       <div class="meta" style="color:var(--muted);font-size:13px">${esc(t.country_name)} · Note moy. ${avg} · Valeur ${fmtMoney(squadValue)}</div></div></div>
       <button class="logout" id="closeModal">Fermer</button></div>
+    <div style="display:flex;gap:16px;align-items:center;margin-top:12px;background:var(--board);border-radius:12px;padding:12px">
+      <div style="text-align:center">${playerKit({id:t.id+'-kf',name:t.name,number:10},t,120,{front:true,sponsor:teamSp})}<div style="font-size:11px;color:var(--muted);margin-top:2px">Maillot ${t.kit_season?'domicile':'(non défini)'}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--muted)">Sponsor principal</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px">${sponsorLogo(teamSp.shape,teamSp.hue,30)}<b style="font-size:16px">${esc(teamSp.name)}</b></div>
+        <div style="display:flex;gap:6px;margin-top:10px">${[t.color1,t.color2,t.color3,t.color4].filter(Boolean).map(c=>`<span style="width:22px;height:22px;border-radius:5px;background:${c};box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></span>`).join('')||'<span style="font-size:12px;color:var(--muted)">Couleurs par défaut</span>'}</div>
+      </div>
+    </div>
     <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
       <span>🔥 Série : <b>${streak}</b> victoire${streak>1?'s':''}</span>
       <span>🏆 Palmarès : ${trophyHtml}</span>
