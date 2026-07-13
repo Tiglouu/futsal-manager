@@ -1113,7 +1113,8 @@ function runMatchReplay(cfg){
       <button class="btn btn-small" id="rpClose">← Fermer</button>
       <div style="font-size:11px;color:var(--muted)">${esc(cfg.styleH.label)} <span style="opacity:.5">vs</span> ${esc(cfg.styleA.label)}</div>
       <div style="display:flex;gap:4px">
-        <button class="btn btn-small rpSpd active" data-s="1">x1</button>
+        <button class="btn btn-small rpSpd" data-s="0.65">Lent</button>
+        <button class="btn btn-small rpSpd active" data-s="1">Normal</button>
         <button class="btn btn-small rpSpd" data-s="2">x2</button>
         <button class="btn btn-small" id="rpPause">⏸</button>
       </div>
@@ -1145,11 +1146,11 @@ function runMatchReplay(cfg){
     const base=(d,s)=>({x: team==='h'? d : 1-d, y: clamp(0.5+s*0.42,0.10,0.90)});
     const gk=base(0.05,0);
     arr.push({team,gk:true,num:players[0]?.number||1,name:lastN(players[0]?.name),id:players[0]?.id,
-      x:gk.x,y:gk.y,bx:gk.x,by:gk.y,tx:gk.x,ty:gk.y,run:0});
+      x:gk.x,y:gk.y,bx:gk.x,by:gk.y,tx:gk.x,ty:gk.y,vx:0,vy:0,run:0});
     for(let i=0;i<4;i++){ const p=players[i+1]||players[i]||{}; const d=clamp(form[i][0]+style.line,0.12,0.9);
       const b=base(d,form[i][1]);
       arr.push({team,gk:false,num:p.number||(i+2),name:lastN(p.name),id:p.id,role:form[i][0]<0.45?'DEF':(form[i][0]<0.7?'MID':'ATT'),
-        x:b.x,y:b.y,bx:b.x,by:b.y,tx:b.x,ty:b.y,run:0}); }
+        x:b.x,y:b.y,bx:b.x,by:b.y,tx:b.x,ty:b.y,vx:0,vy:0,run:0}); }
     return arr;
   }
   function lastN(n){ const p=String(n||'').trim().split(/\s+/); return (p[p.length-1]||'').slice(0,9); }
@@ -1191,7 +1192,7 @@ function runMatchReplay(cfg){
     chain.push(shooter);
     // waypoints du ballon
     const steps=[]; let px=x0, py=0.5+(Math.random()*0.5-0.25);
-    steps.push({kind:'start',holder:chain[0],x:px,y:py,dur:0.5});
+    steps.push({kind:'start',holder:chain[0],x:px,y:py,dur:0.7});
     for(let i=1;i<chain.length;i++){
       const t=i/(chain.length-1);
       let nx=lerp(x0,xShot,t)+(Math.random()*0.04-0.02);
@@ -1200,16 +1201,18 @@ function runMatchReplay(cfg){
       // parfois une conduite de balle avant la passe
       if(!long && Math.random()<0.35){
         const cx=clamp(px+dir*0.07,0.05,0.95), cy=clamp(py+(Math.random()*0.16-0.08),0.12,0.88);
-        steps.push({kind:'carry',holder:chain[i-1],fx:px,fy:py,x:cx,y:cy,dur:(0.7/style.tempo)});
+        steps.push({kind:'carry',holder:chain[i-1],fx:px,fy:py,x:cx,y:cy,dur:(0.95/style.tempo)});
         px=cx; py=cy;
       }
-      steps.push({kind:'pass',from:chain[i-1],to:chain[i],fx:px,fy:py,x:nx,y:ny,dur:(long?0.55:0.42+Math.hypot(nx-px,ny-py)*1.4)/style.tempo});
+      steps.push({kind:'pass',from:chain[i-1],to:chain[i],fx:px,fy:py,x:nx,y:ny,dur:(long?0.80:0.60+Math.hypot(nx-px,ny-py)*2.0)/style.tempo});
+      steps.push({kind:'control',holder:chain[i],x:nx,y:ny,dur:0.24+Math.random()*0.18});
       px=nx; py=ny;
     }
     const gy=0.5+(Math.random()*2-1)*0.10;
-    steps.push({kind:'shot',by:shooter,fx:px,fy:py,x:side==='h'?0.985:0.015,y:act.outcome==='miss'?(0.5+(Math.random()<0.5?-1:1)*(0.20+Math.random()*0.06)):gy,dur:0.5,outcome:act.outcome});
-    if(act.outcome==='goal') steps.push({kind:'celebrate',by:shooter,dur:1.6});
-    else steps.push({kind:'settle',dur:0.8});
+    steps.push({kind:'windup',by:shooter,x:px,y:py,dur:0.30});
+    steps.push({kind:'shot',by:shooter,fx:px,fy:py,x:side==='h'?0.985:0.015,y:act.outcome==='miss'?(0.5+(Math.random()<0.5?-1:1)*(0.20+Math.random()*0.06)):gy,dur:0.55,outcome:act.outcome});
+    if(act.outcome==='goal') steps.push({kind:'celebrate',by:shooter,dur:1.8});
+    else steps.push({kind:'settle',dur:0.9});
     return steps;
   }
 
@@ -1277,11 +1280,26 @@ function runMatchReplay(cfg){
       }
     });
   }
+  function glueBall(h,side){ const vx=h.vx||0, vy=h.vy||0, sp=Math.hypot(vx,vy);
+    let ux=side==='h'?1:-1, uy=0; if(sp>0.02){ ux=vx/sp; uy=vy/sp; }
+    R.ball.x=clamp(h.x+ux*0.016,0.01,0.99); R.ball.y=clamp(h.y+uy*0.016,0.05,0.95); }
   function stepMove(dt){
+    const now=performance.now()/1000;
     ALL.forEach(p=>{
-      const k=Math.min(1,dt*(2.2+p.run*2.5));
-      p.x=lerp(p.x,p.tx,k); p.y=lerp(p.y,p.ty,k);
-      p.run=Math.max(0,p.run-dt*1.5);
+      const dx=p.tx-p.x, dy=p.ty-p.y, d=Math.hypot(dx,dy);
+      const maxS=(p.gk?0.16:0.15)+p.run*0.14;                 // vitesse max (terrain/s)
+      let desX=0, desY=0;
+      if(d>0.002){
+        const arr=Math.min(1,d/0.10);                          // freinage à l'approche
+        let ux=dx/d, uy=dy/d;
+        if(d>0.09){ const w=Math.sin(now*2.4+p.num*1.7)*0.22;  // course légèrement courbe
+          const qx=-uy, qy=ux; ux+=qx*w; uy+=qy*w; const n=Math.hypot(ux,uy)||1; ux/=n; uy/=n; }
+        desX=ux*maxS*arr; desY=uy*maxS*arr;
+      }
+      const k=Math.min(1,dt*3.4);                              // inertie (accélération / décélération)
+      p.vx=(p.vx||0)+(desX-(p.vx||0))*k; p.vy=(p.vy||0)+(desY-(p.vy||0))*k;
+      p.x=clamp(p.x+p.vx*dt,0.02,0.98); p.y=clamp(p.y+p.vy*dt,0.06,0.94);
+      p.run=Math.max(0,p.run-dt*1.2);
     });
     // espacement : deux coéquipiers ne se marchent jamais dessus
     [H,A].forEach(team=>{
@@ -1313,7 +1331,7 @@ function runMatchReplay(cfg){
         baseTargets(null); stepMove(dt);
         R.ball.x=lerp(R.ball.x,0.5+Math.sin(R.pt*1.2)*0.10,dt*2); R.ball.y=lerp(R.ball.y,0.5+Math.cos(R.pt*0.9)*0.08,dt*2);
       }
-      if(R.pt>1.25){ R.phase='action'; R.pt=0; startAction(act); }
+      if(R.pt>1.5){ R.phase='action'; R.pt=0; startAction(act); }
       return;
     }
     // phase action
@@ -1337,7 +1355,9 @@ function runMatchReplay(cfg){
     if(pr){ pr.tx=clamp(R.ball.x-(act.side==='h'?1:-1)*0.03,0.05,0.95); pr.ty=R.ball.y; pr.run=1; }
     const t=Math.min(1,R.st/st.dur), e=ease(t);
     if(st.kind==='start'){ const h=team[st.holder]; h.tx=st.x; h.ty=st.y; h.run=1; R.ball.x=lerp(R.ball.x,st.x,e); R.ball.y=lerp(R.ball.y,st.y,e); }
-    else if(st.kind==='carry'){ const h=team[st.holder]; const bx=lerp(st.fx,st.x,e), by=lerp(st.fy,st.y,e); h.tx=bx; h.ty=by; h.run=1; R.ball.x=bx+(act.side==='h'?0.012:-0.012); R.ball.y=by; }
+    else if(st.kind==='carry'){ const h=team[st.holder]; const bx=lerp(st.fx,st.x,e), by=lerp(st.fy,st.y,e); h.tx=bx; h.ty=by; h.run=1; glueBall(h,act.side); }
+    else if(st.kind==='control'){ const h=team[st.holder]; h.tx=st.x; h.ty=st.y; glueBall(h,act.side); }
+    else if(st.kind==='windup'){ const h=team[st.by]; h.tx=st.x; h.ty=st.y; const dir=act.side==='h'?1:-1; R.ball.x=clamp(h.x-dir*0.012,0.01,0.99); R.ball.y=h.y; }
     else if(st.kind==='pass'){
       const rec=team[st.to]; rec.tx=st.x; rec.ty=st.y; rec.run=1;      // le receveur court au point de chute
       const pa=team[st.from]; if(t<0.3){ pa.run=0.6; }
@@ -1412,7 +1432,7 @@ function runMatchReplay(cfg){
     ctx.save(); ctx.translate(x,y);
     // ombre
     ctx.fillStyle='rgba(0,0,0,.30)'; ctx.beginPath(); ctx.ellipse(0,s*0.62,s*0.55,s*0.20,0,0,7); ctx.fill();
-    ctx.rotate(sway*0.03);
+    ctx.rotate(sway*0.03+clamp((p.vx||0)*0.55,-0.16,0.16));
     // manches
     ctx.fillStyle=c2;
     ctx.beginPath(); ctx.roundRect(-s*0.68,-s*0.46,s*0.26,s*0.34,s*0.08); ctx.fill();
