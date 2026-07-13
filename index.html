@@ -305,6 +305,7 @@
     <button class="active" data-tab="team">Équipe</button>
     <button data-tab="league">Championnat</button>
     <button data-tab="agenda">Agenda</button>
+    <button data-tab="matches">📺 Matchs</button>
     <button data-tab="selection">Sélections</button>
     <button data-tab="monde">Monde<span id="mondeBadge" class="badge hidden"></span></button>
     <button data-tab="hall">Panthéon</button>
@@ -345,6 +346,7 @@
       <div id="tab-auctions" class="hidden"></div>
     </div>
     <div id="tab-chat" class="hidden"></div>
+    <div id="tab-matches" class="hidden"></div>
   </div>
 </div>
 
@@ -1005,6 +1007,45 @@ async function openPlayerActionModal(playerId){
 function confColorP(v){ return v>=70?'var(--green)':v>=40?'#f2d347':'var(--danger)'; }
 function formColorP(v){ return v>=70?'var(--green)':v>=40?'#f2d347':'var(--danger)'; }
 
+/* ============================ Onglet Matchs ============================ */
+async function renderMatches(){
+  const el=$("tab-matches"); if(!el) return;
+  if(!myTeam){ el.innerHTML='<div class="empty">Sélectionne un club.</div>'; return; }
+  el.innerHTML='<div class="loading">Chargement des matchs…</div>';
+  const [lg, cm] = await Promise.all([
+    supa.from("matches").select("id,home_team_id,away_team_id,home_score,away_score,played,scheduled_at,matchday")
+      .or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).order("scheduled_at",{ascending:false}).limit(40),
+    supa.from("competition_matches").select("id,home_team_id,away_team_id,home_score,away_score,played,scheduled_at,round_label")
+      .or(`home_team_id.eq.${myTeam.id},away_team_id.eq.${myTeam.id}`).order("scheduled_at",{ascending:false}).limit(40)
+  ]);
+  const rows=[];
+  (lg.data||[]).forEach(m=>rows.push({...m,label:'Championnat'+(m.matchday?' J'+m.matchday:'')}));
+  (cm.data||[]).forEach(m=>rows.push({...m,label:m.round_label||'Coupe'}));
+  const ids=[...new Set(rows.flatMap(r=>[r.home_team_id,r.away_team_id]).filter(Boolean))];
+  const { data:teams } = await supa.from("teams").select("id,name,country_code").in("id", ids.length?ids:['00000000-0000-0000-0000-000000000000']);
+  const tmap={}; (teams||[]).forEach(t=>tmap[t.id]=t);
+  const played=rows.filter(r=>r.played);
+  const upcoming=rows.filter(r=>!r.played && r.scheduled_at).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
+
+  const row=(r)=>{ const h=tmap[r.home_team_id], a=tmap[r.away_team_id]; if(!h||!a) return '';
+    const when=r.scheduled_at?new Date(r.scheduled_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const sc=r.played?`<b style="font-family:'Space Mono',monospace">${r.home_score} - ${r.away_score}</b>`:`<span style="color:var(--muted);font-size:11px">${esc(when)}</span>`;
+    return `<div class="player match-open" data-id="${r.id}" style="gap:10px;cursor:pointer">
+      <span style="font-size:11px;color:var(--muted);width:86px;flex:0 0 auto">${esc(r.label)}</span>
+      <span style="flex:1;text-align:right;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.name)} ${flag(h.country_code,13)}</span>
+      <span style="flex:0 0 auto;min-width:56px;text-align:center">${sc}</span>
+      <span style="flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${flag(a.country_code,13)} ${esc(a.name)}</span>
+      <span class="btn btn-small ${r.played?'btn-orange':''}" style="flex:0 0 auto">${r.played?'▶ Résumé':'Aperçu'}</span>
+    </div>`; };
+
+  let html=`<div class="card"><h2 style="font-size:20px;margin-bottom:4px">📺 Matchs</h2>
+    <p style="color:var(--muted);font-size:12px">Ouvre un match joué pour voir le <b>résumé animé</b>, ou un match à venir pour son aperçu.</p></div>`;
+  if(upcoming.length) html+=`<div class="card"><h3 style="font-size:15px;margin-bottom:6px">À venir</h3>${upcoming.slice(0,5).map(row).join('')||'<div class="empty">—</div>'}</div>`;
+  html+=`<div class="card"><h3 style="font-size:15px;margin-bottom:6px">Derniers matchs</h3>${played.slice(0,15).map(row).join('')||'<div class="empty">Aucun match joué pour l’instant.</div>'}</div>`;
+  el.innerHTML=html;
+  el.querySelectorAll('.match-open').forEach(b=>b.addEventListener('click',()=>openMatchModal(b.dataset.id)));
+}
+
 /* ============================ RÉSUMÉ DE MATCH (replay chorégraphié) ============================ */
 let matchReplay=null;
 const REPLAY_FORM={
@@ -1620,7 +1661,7 @@ function stopTimers(){
   if(selectionTimer){ clearInterval(selectionTimer); selectionTimer=null; }
   if(selRefreshTimer){ clearInterval(selRefreshTimer); selRefreshTimer=null; }
 }
-const MAIN_TABS=["team","league","agenda","selection","monde","hall","players","bdor","market","chat"];
+const MAIN_TABS=["team","league","agenda","matches","selection","monde","hall","players","bdor","market","chat"];
 let subTeam="squad", subMarket="mercato", subMonde="leagues";
 function switchTab(tab){
   currentTab=tab; stopTimers();
@@ -1629,7 +1670,7 @@ function switchTab(tab){
   if(tab==="team") showSub("team", subTeam);
   else if(tab==="market") showSub("market", subMarket);
   else if(tab==="monde") showSub("monde", subMonde);
-  else ({league:renderLeague,agenda:renderAgenda,
+  else ({league:renderLeague,agenda:renderAgenda,matches:renderMatches,
     selection:renderSelection,hall:renderHall,players:renderPlayers,bdor:renderBallonDor,chat:renderChat}[tab])();
 }
 function showSub(group, which){
