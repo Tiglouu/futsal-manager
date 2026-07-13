@@ -1227,17 +1227,54 @@ function runMatchReplay(cfg){
   }
   function setBanner(txt,color){ R.banner={txt,color:color||'#ffd21f'}; R.bT=1.6; }
 
-  // positions cibles hors action : bloc selon possession
+  // ---------- placements : lignes, bloc, marquage, soutiens ----------
   function baseTargets(attSide){
-    ALL.forEach(p=>{
-      if(p.gk){ p.tx=p.bx; p.ty=clamp(lerp(p.by,R.ball.y,0.35),0.34,0.66); return; }
-      const atk=(attSide!=null)&&(p.team===attSide);
-      const def=(attSide!=null)&&(p.team!==attSide);
-      const dir=p.team==='h'?1:-1;
-      let sx=p.bx, sy=p.by;
-      if(atk){ sx=clamp(p.bx+dir*0.14,0.06,0.94); sy=clamp(lerp(p.by,R.ball.y,0.15)+(p.role==='ATT'?(p.num%2?-0.05:0.05):0),0.10,0.90); }
-      if(def){ sx=clamp(p.bx-dir*0.10,0.06,0.94); sy=clamp(lerp(p.by,R.ball.y,0.45),0.10,0.90); }
-      p.tx=sx; p.ty=sy;
+    const bx=R.ball.x, by=R.ball.y;
+    [['h',H,A],['a',A,H]].forEach(([side,team,opp])=>{
+      const dp=x=>side==='h'?x:1-x, tox=d=>side==='h'?d:1-d;
+      const bd=dp(bx);                                     // profondeur du ballon (sens attaque de cette équipe)
+      const attacking=attSide===side, defending=attSide!=null&&!attacking;
+      // Gardien : sur l'arc entre le ballon et le centre du but, sort un peu quand le ballon est loin
+      const gk=team[0];
+      { const out=clamp((bd-0.5)*0.09,0,0.05);
+        gk.tx=tox(0.045+out); gk.ty=clamp(0.5+(by-0.5)*0.35,0.38,0.62); }
+      // joueurs de champ triés par distance au ballon (porteur, soutien, appel…)
+      const field=team.slice(1);
+      const byDist=field.slice().sort((p,q)=>Math.hypot(p.x-bx,p.y-by)-Math.hypot(q.x-bx,q.y-by));
+      field.forEach(p=>{
+        const baseD=dp(p.bx);
+        let d, ty;
+        if(attacking){
+          const adv=clamp(bd-0.30,0,0.5)*0.75;             // la ligne d'équipe monte avec le ballon
+          d=clamp(baseD+adv,0.12,0.92);
+          ty=clamp(p.by+(by-p.by)*0.12,0.10,0.90);
+          if(p.role==='DEF') d=Math.min(d,clamp(bd-0.14,0.16,0.80));   // le fixo couvre derrière le ballon
+          if(p.role==='ATT'&&bd>0.55) ty=clamp(p.by+(p.by>=by?0.07:-0.07),0.10,0.90); // écartement près du but
+        } else if(defending){
+          const line=clamp(bd*0.55,0.08,0.40);             // ligne du bloc : entre le ballon et notre but
+          d=clamp(line+(baseD-0.30)*0.42,0.07,Math.max(0.08,bd-0.04)); // forme compactée, jamais devant le ballon
+          ty=clamp(p.by+(by-p.by)*0.45,0.12,0.88);         // coulissement collectif côté ballon
+          let mk=null,md=9; opp.forEach(o=>{ if(o.gk)return; const dd=Math.hypot(o.x-p.x,o.y-p.y); if(dd<md){md=dd;mk=o;} });
+          if(mk&&md<0.22){ d=clamp(lerp(d,dp(mk.x)-0.05,0.35),0.07,0.90); ty=clamp(lerp(ty,mk.y,0.40),0.10,0.90); } // marquage
+          if(dp(p.x)>bd+0.02) p.run=Math.max(p.run,1.0);   // dépassé par le ballon -> repli sprinté
+        } else {
+          d=lerp(baseD,clamp(bd,0.2,0.8),0.10);            // phase neutre : léger aimant vers le ballon
+          ty=clamp(p.by+(by-p.by)*0.10,0.10,0.90);
+        }
+        p.tx=tox(d); p.ty=ty;
+      });
+      if(attacking){
+        // triangle autour du porteur : appui derrière + appel devant, dans l'espace opposé
+        const carrier=byDist[0], support=byDist[1], runner=byDist[2];
+        if(carrier){ carrier.tx=clamp(bx,0.05,0.95); carrier.ty=clamp(by,0.10,0.90); }
+        if(support){ support.tx=tox(clamp(bd-0.11,0.08,0.90)); support.ty=clamp(by+(support.by>by?0.10:-0.10),0.10,0.90); support.run=Math.max(support.run,0.5); }
+        if(runner){ runner.tx=tox(clamp(bd+0.16,0.10,0.93)); runner.ty=clamp(by+(runner.by>=by?0.16:-0.16),0.10,0.90); runner.run=Math.max(runner.run,0.6); }
+      }
+      if(defending){
+        // couverture : le 2e plus proche se place côté but, derrière le presseur
+        const cover=byDist[1];
+        if(cover){ cover.tx=tox(clamp(bd-0.10,0.06,0.90)); cover.ty=clamp(by,0.12,0.88); cover.run=Math.max(cover.run,0.5); }
+      }
     });
   }
   function stepMove(dt){
@@ -1245,6 +1282,16 @@ function runMatchReplay(cfg){
       const k=Math.min(1,dt*(2.2+p.run*2.5));
       p.x=lerp(p.x,p.tx,k); p.y=lerp(p.y,p.ty,k);
       p.run=Math.max(0,p.run-dt*1.5);
+    });
+    // espacement : deux coéquipiers ne se marchent jamais dessus
+    [H,A].forEach(team=>{
+      for(let i=1;i<team.length;i++)for(let j=i+1;j<team.length;j++){
+        const a2=team[i],b2=team[j];
+        let dx=b2.x-a2.x,dy=b2.y-a2.y,d=Math.hypot(dx,dy);
+        if(d<0.07&&d>1e-4){ const push=(0.07-d)/2; dx/=d; dy/=d;
+          a2.x=clamp(a2.x-dx*push,0.03,0.97); a2.y=clamp(a2.y-dy*push,0.08,0.92);
+          b2.x=clamp(b2.x+dx*push,0.03,0.97); b2.y=clamp(b2.y+dy*push,0.08,0.92); }
+      }
     });
   }
   function resetAll(){ ALL.forEach(p=>{p.tx=p.bx;p.ty=p.by;}); R.ball.x=0.5; R.ball.y=0.5; }
@@ -1257,10 +1304,16 @@ function runMatchReplay(cfg){
     if(R.phase==='trans'){
       R.pt+=dt;
       R.dispMin=lerp(R.dispMin, act.minute, Math.min(1,dt*3.5));
-      baseTargets(null); stepMove(dt);
-      // ballon circule doucement au milieu (respiration)
-      R.ball.x=lerp(R.ball.x,0.5+Math.sin(R.pt*1.2)*0.10,dt*2); R.ball.y=lerp(R.ball.y,0.5+Math.cos(R.pt*0.9)*0.08,dt*2);
-      if(R.pt>1.1){ R.phase='action'; R.pt=0; startAction(act); }
+      if(act.type==='attack' && R.steps){
+        // placement anticipé : les deux blocs s'installent, le ballon rejoint le départ de l'action
+        baseTargets(act.side); stepMove(dt);
+        const s0=R.steps[0];
+        R.ball.x=lerp(R.ball.x,s0.x,Math.min(1,dt*2.6)); R.ball.y=lerp(R.ball.y,s0.y,Math.min(1,dt*2.6));
+      } else {
+        baseTargets(null); stepMove(dt);
+        R.ball.x=lerp(R.ball.x,0.5+Math.sin(R.pt*1.2)*0.10,dt*2); R.ball.y=lerp(R.ball.y,0.5+Math.cos(R.pt*0.9)*0.08,dt*2);
+      }
+      if(R.pt>1.25){ R.phase='action'; R.pt=0; startAction(act); }
       return;
     }
     // phase action
@@ -1322,10 +1375,14 @@ function runMatchReplay(cfg){
     if(R.st>=st.dur){ R.si++; R.st=0; if(!R.steps[R.si]) nextAct(); }
   }
   function startAction(act){
-    if(act.type==='attack'){ R.steps=buildSteps(act); R.si=0; R.st=0; }
+    if(act.type==='attack'){ if(!R.steps){ R.steps=buildSteps(act); } R.si=0; R.st=0; }
     else { R.steps=null; }
   }
-  function nextAct(){ R.ai++; R.phase='trans'; R.pt=0; resetAll(); }
+  function nextAct(){
+    R.ai++; R.phase='trans'; R.pt=0; resetAll();
+    const nx=acts[R.ai];
+    R.steps=(nx&&nx.type==='attack')?buildSteps(nx):null; R.si=0; R.st=0;
+  }
 
   // ---------- rendu ----------
   function F(){ const W=cv.width,Hh=cv.height,mx=W*0.045,my=Hh*0.07; return {x:mx,y:my,w:W-2*mx,h:Hh-2*my,W,Hh}; }
