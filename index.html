@@ -1216,13 +1216,14 @@ function runMatchReplay(cfg){
         steps.push({kind:'control',holder:chain[i-1],x:rx,y:ry,dur:0.16});
         px=rx; py=ry;
       }
-      steps.push({kind:'pass',from:chain[i-1],to:chain[i],fx:px,fy:py,x:nx,y:ny,dur:(long?0.80:0.60+Math.hypot(nx-px,ny-py)*2.0)/style.tempo,long});
-      steps.push({kind:'control',holder:chain[i],x:nx,y:ny,dur:0.24+Math.random()*0.18});
+      steps.push({kind:'pass',from:chain[i-1],to:chain[i],fx:px,fy:py,x:nx,y:ny,dur:(long?0.80:0.60+Math.hypot(nx-px,ny-py)*2.0)/style.tempo,long,curve:(Math.random()*2-1)*(long?0.075:0.028)});
+      const oneTouch=Math.random()<(style.tempo>1.15?0.45:0.15);        // jeu en une touche
+      if(!oneTouch) steps.push({kind:'control',holder:chain[i],x:nx,y:ny,dur:0.24+Math.random()*0.18});
       px=nx; py=ny;
     }
     const gy=0.5+(Math.random()*2-1)*0.10;
     steps.push({kind:'windup',by:shooter,x:px,y:py,dur:0.30});
-    steps.push({kind:'shot',by:shooter,fx:px,fy:py,x:side==='h'?0.985:0.015,y:act.outcome==='miss'?(0.5+(Math.random()<0.5?-1:1)*(0.20+Math.random()*0.06)):gy,dur:0.55,outcome:act.outcome});
+    steps.push({kind:'shot',by:shooter,fx:px,fy:py,x:side==='h'?0.985:0.015,y:act.outcome==='miss'?(0.5+(Math.random()<0.5?-1:1)*(0.20+Math.random()*0.06)):gy,dur:0.55,outcome:act.outcome,curve:(Math.random()*2-1)*0.035,post:(act.outcome==='save'&&Math.random()<0.35)});
     if(act.outcome==='goal') steps.push({kind:'celebrate',by:shooter,dur:1.8});
     else steps.push({kind:'settle',dur:0.9});
     return steps;
@@ -1233,6 +1234,7 @@ function runMatchReplay(cfg){
     minute:1, dispMin:1, score:{h:0,a:0}, speed:1, run:true, ended:false,
     ball:{x:.5,y:.5}, banner:null, bT:0, flashSide:null,
     cam:{x:0.5,y:0.5,z:1}, camT:null, trail:[], netRip:null, flashT:0, ballH:0, lineupT:3.6,
+    pb:{x:.5,y:.5}, ballRot:0, rings:[], slow:false, lastKey:'',
     last:performance.now(), raf:0 };
 
   function feed(html){ const f=$("rpFeed"); if(!f)return; const d=document.createElement('div'); d.innerHTML=html; f.prepend(d); while(f.children.length>30)f.removeChild(f.lastChild); }
@@ -1383,22 +1385,43 @@ function runMatchReplay(cfg){
     if(pr){ pr.tx=clamp(R.ball.x-(act.side==='h'?1:-1)*0.03,0.05,0.95); pr.ty=R.ball.y; pr.run=1; }
     const t=Math.min(1,R.st/st.dur), e=ease(t);
     if(st.kind==='start'){ const h=team[st.holder]; h.tx=st.x; h.ty=st.y; h.run=1; R.ball.x=lerp(R.ball.x,st.x,e); R.ball.y=lerp(R.ball.y,st.y,e); }
-    else if(st.kind==='carry'){ const h=team[st.holder]; const bx=lerp(st.fx,st.x,e), by=lerp(st.fy,st.y,e); h.tx=bx; h.ty=by; h.run=1; glueBall(h,act.side); }
+    else if(st.kind==='carry'){ const h=team[st.holder];
+      const cdx=st.x-st.fx, cdy=st.y-st.fy, cl=Math.hypot(cdx,cdy)||1;
+      const zig=Math.sin(t*Math.PI*2)*0.022;                            // feinte de corps
+      const bx=lerp(st.fx,st.x,e)+(-cdy/cl)*zig, by=lerp(st.fy,st.y,e)+(cdx/cl)*zig;
+      h.tx=bx; h.ty=by; h.run=1; glueBall(h,act.side); }
+    else if(st.kind==='rebound'){
+      R.ball.x=lerp(st.fx,st.x,e); R.ball.y=lerp(st.fy,st.y,e);
+      R.ballH=Math.sin(t*Math.PI)*0.30*(1-t*0.4);
+    }
     else if(st.kind==='control'){ const h=team[st.holder]; h.tx=st.x; h.ty=st.y; glueBall(h,act.side); }
     else if(st.kind==='windup'){ const h=team[st.by]; h.tx=st.x; h.ty=st.y; const dir=act.side==='h'?1:-1; R.ball.x=clamp(h.x-dir*0.012,0.01,0.99); R.ball.y=h.y; }
     else if(st.kind==='pass'){
       const rec=team[st.to]; rec.tx=st.x; rec.ty=st.y; rec.run=1;      // le receveur court au point de chute
       const pa=team[st.from]; if(t<0.3){ pa.run=0.6; }
-      R.ball.x=lerp(st.fx,st.x,e); R.ball.y=lerp(st.fy,st.y,e)-Math.sin(t*Math.PI)*0.02;  // légère cloche
+      const cdx=st.x-st.fx, cdy=st.y-st.fy, cl=Math.hypot(cdx,cdy)||1;
+      const co=Math.sin(t*Math.PI)*(st.curve||0);                       // effet donné au ballon
+      R.ball.x=lerp(st.fx,st.x,e)+(-cdy/cl)*co;
+      R.ball.y=lerp(st.fy,st.y,e)+(cdx/cl)*co-Math.sin(t*Math.PI)*0.02;
       R.ballH=Math.sin(t*Math.PI)*(st.long?1:0.40);
     }
     else if(st.kind==='shot'){
       const gk=opp[0];
       gk.tx=gk.bx; gk.ty=clamp(st.y,0.36,0.64); gk.run=1.4;            // plongeon
-      R.ball.x=lerp(st.fx,st.x,e); R.ball.y=lerp(st.fy,st.y,e);
+      const sdx=st.x-st.fx, sdy=st.y-st.fy, sl=Math.hypot(sdx,sdy)||1;
+      const so=Math.sin(t*Math.PI)*(st.curve||0);
+      R.ball.x=lerp(st.fx,st.x,e)+(-sdy/sl)*so; R.ball.y=lerp(st.fy,st.y,e)+(sdx/sl)*so;
       R.ballH=Math.sin(t*Math.PI)*0.30;
-      if(t>=1){
-        if(st.outcome==='goal'){
+      if(t>=1 && !st.resolved){ st.resolved=true;
+        if(st.post && st.outcome!=='goal'){
+          const py2=st.y>0.5?0.5+0.155:0.5-0.155;
+          R.ball.y=py2;
+          setBanner('Poteau !','#f9e79f');
+          feed(`<span style="color:var(--muted)"><b>${Math.round(act.minute)}'</b> 🔩 La frappe heurte le poteau !</span>`);
+          R.rings.push({x:R.ball.x,y:py2,t:0.45});
+          R.steps.splice(R.si+1,0,{kind:'rebound',fx:R.ball.x,fy:py2,x:clamp(R.ball.x+(act.side==='h'?-1:1)*(0.10+Math.random()*0.08),0.05,0.95),y:clamp(py2+(Math.random()*0.2-0.1),0.15,0.85),dur:0.6});
+        }
+        else if(st.outcome==='goal'){
           R.score[act.side]++; updScore();
           R.netRip={side:act.side,t:0.7}; R.flashT=0.28;
           const se=$("rpScore"); if(se&&se.style){ se.style.transition='transform .18s'; se.style.transform='scale(1.3)'; setTimeout(()=>{ try{se.style.transform='scale(1)';}catch(e){} },220); }
@@ -1543,6 +1566,8 @@ function runMatchReplay(cfg){
     }
     // traînée du ballon
     R.trail.forEach(tp=>{ ctx.fillStyle=`rgba(255,255,255,${0.28*tp.a})`; ctx.beginPath(); ctx.arc(f.x+tp.x*f.w,f.y+tp.y*f.h,Math.max(1.5,f.W*0.005)*tp.a,0,7); ctx.fill(); });
+    R.rings.forEach(r=>{ const rr=(0.45-r.t)/0.45; ctx.strokeStyle=`rgba(255,255,255,${Math.max(0,r.t*1.6)})`; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(f.x+r.x*f.w,f.y+r.y*f.h,3+rr*15,0,7); ctx.stroke(); });
     if(R.phase==='action'&&R.steps){ const stp=R.steps[R.si];
       if(stp&&stp.kind==='pass'){ const tt=Math.min(1,R.st/stp.dur);
         if(tt<0.4){ const a=(0.4-tt)/0.4*0.45;
@@ -1555,9 +1580,20 @@ function runMatchReplay(cfg){
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(bx,byG+br0,br0*0.9/(1+bh*0.5),br0*0.4/(1+bh*0.5),0,0,7); ctx.fill();
     ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(bx,by,br,0,7); ctx.fill();
     ctx.strokeStyle='#222'; ctx.lineWidth=1; ctx.stroke();
+    ctx.save(); ctx.translate(bx,by); ctx.rotate(R.ballRot); ctx.fillStyle='#2b2b2b';
+    ctx.beginPath(); ctx.arc(0,0,br*0.26,0,7); ctx.fill();
+    for(let k3=0;k3<3;k3++){ const an=k3*2.094; ctx.beginPath(); ctx.arc(Math.cos(an)*br*0.60,Math.sin(an)*br*0.60,br*0.15,0,7); ctx.fill(); }
+    ctx.restore();
     ctx.restore();
     // flash de but
     if(R.flashT>0){ ctx.fillStyle=`rgba(255,255,255,${R.flashT})`; ctx.fillRect(0,0,f.W,f.Hh); }
+    // ambiance cinéma pendant le ralenti
+    if(R.slow){
+      ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(0,0,f.W,f.Hh*0.065); ctx.fillRect(0,f.Hh*0.935,f.W,f.Hh*0.065);
+      const vg=ctx.createRadialGradient(f.W/2,f.Hh/2,f.Hh*0.35,f.W/2,f.Hh/2,f.Hh*0.78);
+      vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.35)');
+      ctx.fillStyle=vg; ctx.fillRect(0,0,f.W,f.Hh);
+    }
     // compositions d'avant-match (noms + numéros des 10 acteurs)
     if(R.lineupT>0){
       const a=clamp(R.lineupT/0.45,0,1);
@@ -1597,11 +1633,20 @@ function runMatchReplay(cfg){
     const rdt=Math.min(0.05,(now-R.last)/1000); R.last=now;
     let dt=rdt*R.speed;
     // ralenti dramatique sur le tir qui marque
-    if(R.phase==='action'&&R.steps){ const st0=R.steps[R.si]; if(st0&&st0.kind==='shot'&&st0.outcome==='goal') dt*=0.45; }
+    R.slow=false;
+    if(R.phase==='action'&&R.steps){ const st0=R.steps[R.si]; if(st0&&st0.kind==='shot'&&st0.outcome==='goal'){ dt*=0.45; R.slow=true; } }
     if(R.run && !R.ended) advance(dt);
     // traînée du ballon (uniquement quand il vole)
     if(R.phase==='action'&&R.steps){ const st0=R.steps[R.si];
-      if(st0&&(st0.kind==='pass'||st0.kind==='shot')) R.trail.push({x:R.ball.x,y:R.ball.y,a:1}); }
+      if(st0&&(st0.kind==='pass'||st0.kind==='shot'||st0.kind==='rebound')) R.trail.push({x:R.ball.x,y:R.ball.y,a:1}); }
+    // rotation du ballon selon sa vitesse + ondes d'impact au départ des frappes
+    const bsp=Math.hypot(R.ball.x-R.pb.x,R.ball.y-R.pb.y);
+    R.ballRot+=bsp*26; R.pb.x=R.ball.x; R.pb.y=R.ball.y;
+    const key=R.phase+':'+R.ai+':'+R.si;
+    if(key!==R.lastKey){ R.lastKey=key;
+      if(R.phase==='action'&&R.steps){ const st0=R.steps[R.si];
+        if(st0&&(st0.kind==='pass'||st0.kind==='shot')) R.rings.push({x:st0.fx,y:st0.fy,t:0.4}); } }
+    R.rings.forEach(r=>r.t-=rdt*1.6); R.rings=R.rings.filter(r=>r.t>0);
     R.trail.forEach(tp=>tp.a-=rdt*2.4); R.trail=R.trail.filter(tp=>tp.a>0);
     if(R.netRip){ R.netRip.t-=rdt; if(R.netRip.t<=0) R.netRip=null; }
     if(R.flashT>0) R.flashT-=rdt*1.4;
