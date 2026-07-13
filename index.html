@@ -1069,8 +1069,11 @@ function replayStyle(t){
 async function openMatchReplay(m, kind, homeTeam, awayTeam, evs){
   // titulaires + tactiques
   const pick=async(tid)=>{
-    let { data:st } = await supa.from("players").select("id,name,number,rating,confidence,position,slot").eq("team_id",tid).eq("is_starter",true).limit(5);
-    if(!st||st.length<5){ const r=await supa.from("players").select("id,name,number,rating,confidence,position,slot").eq("team_id",tid).order("rating",{ascending:false}).limit(5); st=r.data||[]; }
+    const ord={GK:0,FIXO:1,AIL1:2,AIL2:3,PIVOT:4};
+    let { data:st } = await supa.from("players").select("*").eq("team_id",tid).eq("is_starter",true).limit(5);
+    if(!st||st.length<5){ const r=await supa.from("players").select("*").eq("team_id",tid).order("rating",{ascending:false}).limit(6); st=r.data||[];
+      st.sort((a,b)=>((a.position==='Gardien')?-1:0)-((b.position==='Gardien')?-1:0)||b.rating-a.rating); st=st.slice(0,5); }
+    else st.sort((a,b)=>((ord[a.slot]??9)-(ord[b.slot]??9))||b.rating-a.rating);
     return st;
   };
   const [hp, ap, tH, tA] = await Promise.all([
@@ -1145,11 +1148,11 @@ function runMatchReplay(cfg){
     const form=REPLAY_FORM[formName]||REPLAY_FORM.losange, arr=[];
     const base=(d,s)=>({x: team==='h'? d : 1-d, y: clamp(0.5+s*0.42,0.10,0.90)});
     const gk=base(0.05,0);
-    arr.push({team,gk:true,num:players[0]?.number||1,name:lastN(players[0]?.name),id:players[0]?.id,
+    arr.push({team,gk:true,num:players[0]?.number||1,name:lastN(players[0]?.name),fullName:players[0]?.name||'',id:players[0]?.id,
       x:gk.x,y:gk.y,bx:gk.x,by:gk.y,tx:gk.x,ty:gk.y,vx:0,vy:0,run:0});
     for(let i=0;i<4;i++){ const p=players[i+1]||players[i]||{}; const d=clamp(form[i][0]+style.line,0.12,0.9);
       const b=base(d,form[i][1]);
-      arr.push({team,gk:false,num:p.number||(i+2),name:lastN(p.name),id:p.id,role:form[i][0]<0.45?'DEF':(form[i][0]<0.7?'MID':'ATT'),
+      arr.push({team,gk:false,num:p.number||(i+2),name:lastN(p.name),fullName:p.name||'',id:p.id,role:form[i][0]<0.45?'DEF':(form[i][0]<0.7?'MID':'ATT'),
         x:b.x,y:b.y,bx:b.x,by:b.y,tx:b.x,ty:b.y,vx:0,vy:0,run:0}); }
     return arr;
   }
@@ -1229,7 +1232,7 @@ function runMatchReplay(cfg){
   const R={ ai:0, phase:'trans', pt:0, steps:null, si:0, st:0,
     minute:1, dispMin:1, score:{h:0,a:0}, speed:1, run:true, ended:false,
     ball:{x:.5,y:.5}, banner:null, bT:0, flashSide:null,
-    cam:{x:0.5,y:0.5,z:1}, camT:null, trail:[], netRip:null, flashT:0, ballH:0,
+    cam:{x:0.5,y:0.5,z:1}, camT:null, trail:[], netRip:null, flashT:0, ballH:0, lineupT:3.6,
     last:performance.now(), raf:0 };
 
   function feed(html){ const f=$("rpFeed"); if(!f)return; const d=document.createElement('div'); d.innerHTML=html; f.prepend(d); while(f.children.length>30)f.removeChild(f.lastChild); }
@@ -1511,8 +1514,9 @@ function runMatchReplay(cfg){
     ctx.fillText(String(p.num),0,s*0.02);
     ctx.restore();
     // nom
-    ctx.fillStyle='rgba(255,255,255,.88)'; ctx.font=`${Math.max(7,W*0.014)}px Arial`; ctx.textAlign='center'; ctx.textBaseline='top';
-    ctx.fillText(p.name||'', x, y+s*0.75);
+    ctx.font=`600 ${Math.max(7,W*0.0145)}px Arial`; ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillText(p.name||'', x+0.8, y+s*0.75+0.8);
+    ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fillText(p.name||'', x, y+s*0.75);
     // anneau porteur
     if(!R.ended && R.phase==='action' && R.steps){ const st=R.steps[R.si];
       const hold = st && ((st.kind==='start'||st.kind==='carry')&&((p.team==='h'?H:A)[st.holder]===p) || (st.kind==='pass'&&(p.team===((acts[R.ai]||{}).side))&&false));
@@ -1554,6 +1558,32 @@ function runMatchReplay(cfg){
     ctx.restore();
     // flash de but
     if(R.flashT>0){ ctx.fillStyle=`rgba(255,255,255,${R.flashT})`; ctx.fillRect(0,0,f.W,f.Hh); }
+    // compositions d'avant-match (noms + numéros des 10 acteurs)
+    if(R.lineupT>0){
+      const a=clamp(R.lineupT/0.45,0,1);
+      const pw=f.W*0.88, ph=f.Hh*0.84, px0=(f.W-pw)/2, py0=(f.Hh-ph)/2;
+      ctx.globalAlpha=a;
+      ctx.fillStyle='rgba(8,13,10,0.86)'; ctx.beginPath(); ctx.roundRect(px0,py0,pw,ph,12); ctx.fill();
+      ctx.fillStyle='#e8f0ea'; ctx.font=`900 ${f.W*0.030}px Arial`; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('COMPOSITIONS', f.W/2, py0+ph*0.045);
+      const chip=f.W*0.018;
+      ctx.fillStyle=HC.c1; ctx.fillRect(px0+pw*0.055, py0+ph*0.155, chip, chip);
+      ctx.fillStyle=AC.c1; ctx.fillRect(px0+pw*0.945-chip, py0+ph*0.155, chip, chip);
+      ctx.font=`bold ${f.W*0.024}px Arial`; ctx.fillStyle='#eef3ef';
+      ctx.textAlign='left';  ctx.fillText(String(cfg.home.name).slice(0,15), px0+pw*0.055+chip*1.5, py0+ph*0.155);
+      ctx.textAlign='right'; ctx.fillText(String(cfg.away.name).slice(0,15), px0+pw*0.945-chip*1.5, py0+ph*0.155);
+      ctx.font=`${f.W*0.023}px Arial`;
+      for(let i=0;i<5;i++){
+        const yy=py0+ph*(0.30+i*0.125), hp=H[i], ap=A[i]; if(!hp||!ap) continue;
+        ctx.textAlign='left';
+        ctx.fillStyle='#ffd21f'; ctx.fillText(String(hp.num), px0+pw*0.055, yy);
+        ctx.fillStyle='#eef3ef'; ctx.fillText(String(hp.fullName||hp.name||'').slice(0,16)+(i===0?' 🧤':''), px0+pw*0.125, yy);
+        ctx.textAlign='right';
+        ctx.fillStyle='#ffd21f'; ctx.fillText(String(ap.num), px0+pw*0.945, yy);
+        ctx.fillStyle='#eef3ef'; ctx.fillText(String(ap.fullName||ap.name||'').slice(0,16)+(i===0?' 🧤':''), px0+pw*0.875, yy);
+      }
+      ctx.globalAlpha=1;
+    }
     // bannière
     if(R.banner && R.bT>0){
       const a=Math.min(1,R.bT*2);
@@ -1575,6 +1605,7 @@ function runMatchReplay(cfg){
     R.trail.forEach(tp=>tp.a-=rdt*2.4); R.trail=R.trail.filter(tp=>tp.a>0);
     if(R.netRip){ R.netRip.t-=rdt; if(R.netRip.t<=0) R.netRip=null; }
     if(R.flashT>0) R.flashT-=rdt*1.4;
+    if(R.lineupT>0) R.lineupT-=rdt;
     // caméra : suit l'action, gros plan sur tirs et célébrations
     let zt=1, txc=0.5, tyc=0.5;
     if(!R.ended && R.phase==='kick'){ zt=1.22; txc=0.5; tyc=0.5; }
