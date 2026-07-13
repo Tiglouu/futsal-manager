@@ -1443,7 +1443,7 @@ async function openMatchModal(matchId){
   let homeLabel, awayLabel, homeCode, awayCode, homeTeamObj=null, awayTeamObj=null;
   if(isNation){ homeCode=m.home_country; awayCode=m.away_country; homeLabel=countryName(m.home_country); awayLabel=countryName(m.away_country); }
   else {
-    const { data:tt } = await supa.from("teams").select("id,name,country_code,manager_pseudo,is_bot,rival_team_id,color1,color2,color3,color4,kit_pattern,kit_font,kit_num_style,kit_season").in("id",[m.home_team_id,m.away_team_id]);
+    const { data:tt } = await supa.from("teams").select("*").in("id",[m.home_team_id,m.away_team_id]);
     const tm={}; (tt||[]).forEach(t=>tm[t.id]=t);
     homeTeamObj=tm[m.home_team_id]||null; awayTeamObj=tm[m.away_team_id]||null;
     homeCode=tm[m.home_team_id]?.country_code; awayCode=tm[m.away_team_id]?.country_code;
