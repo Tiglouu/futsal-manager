@@ -330,11 +330,15 @@
         <button class="active" data-sub="monde:leagues">Ligues</button>
         <button data-sub="monde:cl">Champions</button>
         <button data-sub="monde:coupes">Coupes</button>
+        <button data-sub="monde:conti">🌍 Continentale</button>
+        <button data-sub="monde:wc">🏆 Mondial</button>
         <button data-sub="monde:gazette">La Gazette</button>
       </div>
       <div id="tab-leagues"></div>
       <div id="tab-cl" class="hidden"></div>
       <div id="tab-coupes" class="hidden"></div>
+      <div id="tab-conti" class="hidden"></div>
+      <div id="tab-wc" class="hidden"></div>
       <div id="tab-gazette" class="hidden"></div>
     </div>
     <div id="tab-hall" class="hidden"></div>
@@ -2018,8 +2022,8 @@ function showSub(group, which){
   } else if(group==="monde"){
     subMonde=which;
     document.querySelectorAll('#tab-monde .subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sub==='monde:'+which));
-    ["leagues","cl","coupes","gazette"].forEach(s=>$("tab-"+s).classList.toggle("hidden", s!==which));
-    ({leagues:renderLeaguesList, cl:renderCL, coupes:renderMondeCups, gazette:renderGazette}[which])();
+    ["leagues","cl","coupes","conti","wc","gazette"].forEach(s=>$("tab-"+s).classList.toggle("hidden", s!==which));
+    ({leagues:renderLeaguesList, cl:renderCL, coupes:renderMondeCups, conti:renderContiTab, wc:renderWCTab, gazette:renderGazette}[which])();
     if(which==="cl") markMondeSeen();
   } else {
     subMarket=which;
@@ -3098,6 +3102,31 @@ async function renderQualif(zone, code){
       <td class="num">${r.pj}</td><td class="num hide">${d>0?'+':''}${d}</td><td class="num"><strong>${r.pts}</strong></td></tr>`; });
   wrap.innerHTML=html+`</tbody></table></div>`;
 }
+/* ---------- Onglets dédiés : Coupe continentale & Coupe du monde ---------- */
+async function renderContiTab(){
+  const el=$("tab-conti"); if(!el) return;
+  el.innerHTML='<div class="loading">Chargement…</div>';
+  const cc = myTeam ? myTeam.country_code : null;
+  let zone=null;
+  if(cc){ const {data:c}=await supa.from("countries").select("zone").eq("code",cc).single(); zone=c?c.zone:null; }
+  const { data:zs } = await supa.from("countries").select("zone").not("zone","is",null);
+  const zones=[...new Set((zs||[]).map(z=>z.zone))].sort();
+  if(!zone && zones.length) zone=zones[0];
+  const sel=`<div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <h2 style="font-size:19px;margin:0">🌍 Coupe continentale</h2>
+      <select id="contiZone" style="margin-left:auto">${zones.map(z=>`<option value="${esc(z)}" ${z===zone?'selected':''}>${esc(z)}</option>`).join('')}</select>
+    </div>`;
+  el.innerHTML=sel+'<div id="ccWrap"></div>';
+  if($("contiZone")) $("contiZone").addEventListener("change",()=>{ renderContinentalCup($("contiZone").value, cc); });
+  if(zone) renderContinentalCup(zone, cc);
+  else $("ccWrap").innerHTML='<div class="empty">Aucune zone disponible.</div>';
+}
+async function renderWCTab(){
+  const el=$("tab-wc"); if(!el) return;
+  el.innerHTML='<div class="card"><h2 style="font-size:19px;margin:0">🏆 Coupe du monde</h2></div><div id="wcupWrap"></div>';
+  renderWorldCup(myTeam?myTeam.country_code:null);
+}
+
 async function renderContinentalCup(zone, code){
   const wrap=$("ccWrap"); if(!wrap) return;
   wrap.innerHTML='<div class="card" style="margin:0"><div class="loading">Chargement…</div></div>';
